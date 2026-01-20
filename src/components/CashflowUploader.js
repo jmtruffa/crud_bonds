@@ -131,7 +131,7 @@ export default function CashflowUploader({ bond }) {
     };
 
     try {
-      if (!data.date || !data.rate || !data.amort || !data.amount) {
+      if (!data.date || !data.amort || !data.amount) {
         alert('Please fill in all required fields');
         return;
       }
@@ -216,6 +216,8 @@ export default function CashflowUploader({ bond }) {
                           onChange={(e) => handleEditChange(c.id, 'date', e.target.value)}
                           className="edit-input"
                           readOnly={!isEditing}
+                          required
+                          autoFocus
                         />
                       </td>
                       <td>

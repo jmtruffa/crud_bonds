@@ -527,3 +527,33 @@ h1 {
     width: 100%;
   }
 }
+/* Filter Bar */
+.filter-bar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.filter-bar label {
+  font-weight: bold;
+  color: #555;
+  font-size: 14px;
+}
+
+.filter-select {
+  padding: 6px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: white;
+  cursor: pointer;
+}
+
+.filter-select:focus {
+  border-color: #3498db;
+  outline: none;
+}

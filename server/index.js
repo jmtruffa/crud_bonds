@@ -55,7 +55,6 @@ const pool = new Pool({
   ssl
 });
 
-// avoid logging secrets
 console.log('🔧 Environment (DB):');
 console.log(`   POSTGRES_HOST: ${dbConfig.host}`);
 console.log(`   POSTGRES_USER: ${dbConfig.user}`);

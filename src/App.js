@@ -9,6 +9,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const [isCloning, setIsCloning] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -25,21 +26,22 @@ function App() {
 
   useEffect(() => { load(); }, []);
 
-  async function handleSave(bond) {
-    try {
-      if (bond.id) {
-        await updateBond(bond.id, bond);
-      } else {
-        await createBond(bond);
-      }
-      setShowForm(false);
-      setEditing(null);
-      load();
-    } catch (e) {
-      console.error(e);
-      alert('Save failed: ' + e.message);
+ async function handleSave(bond) {
+  try {
+    if (bond.id && !isCloning) {
+      await updateBond(bond.id, bond);
+    } else {
+      await createBond(bond);
     }
+    setShowForm(false);
+    setEditing(null);
+    setIsCloning(false);  // ← AGREGAR esta línea
+    load();
+  } catch (e) {
+    console.error(e);
+    alert('Save failed: ' + e.message);
   }
+}
 
   async function handleDelete(id) {
     if (!window.confirm('Delete bond?')) return;
@@ -52,12 +54,17 @@ function App() {
     }
   }
 
+  function handleClone(bond) {
+  setEditing(bond);
+  setIsCloning(true);
+  setShowForm(true);
+}
   return (
     <div className="app-container">
       <header>
         <h1>CRUD Bonds</h1>
         <div>
-          <button className="btn btn-success" onClick={() => { setEditing({}); setShowForm(true); }}>+ New Bond</button>
+          <button className="btn btn-success" onClick={() => { setEditing({}); setIsCloning(false); setShowForm(true); }}>+ New Bond</button>
         </div>
       </header>
 
@@ -68,6 +75,7 @@ function App() {
               bonds={bonds}
               onEdit={(b) => { setEditing(b); setShowForm(true); }}
               onDelete={handleDelete}
+              onClone={handleClone}
             />
           )}
         </section>
@@ -75,7 +83,7 @@ function App() {
         {showForm && (
           <div className="modal-overlay">
             <div className="modal-content">
-              <BondForm initial={editing} onSave={handleSave} onCancel={() => { setShowForm(false); setEditing(null); }} />
+              <BondForm initial={editing} onSave={handleSave} onCancel={() => { setShowForm(false); setEditing(null); setIsCloning(false);}} isClone={isCloning} />
             </div>
           </div>
         )}

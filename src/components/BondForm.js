@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getIndexes, getDayCountConventions } from '../api';
 
-export default function BondForm({ initial = {}, onSave, onCancel }) {
+export default function BondForm({ initial = {}, onSave, onCancel, isClone = false }) {
   // Inicializar con defaults para evitar uncontrolled -> controlled warnings
   const [form, setForm] = useState({
     id: '',
@@ -26,8 +26,8 @@ export default function BondForm({ initial = {}, onSave, onCancel }) {
     };
 
     setForm({
-      id: initial.id || '',
-      ticker: initial.ticker || '',
+      id: isClone ? '' : (initial.id || ''),
+      ticker: isClone ? `${initial.ticker || ''}_COPY` : (initial.ticker || ''),
       issue_date: dateToString(initial.issue_date),
       maturity: dateToString(initial.maturity),
       coupon: initial.coupon ?? 0,
@@ -35,7 +35,7 @@ export default function BondForm({ initial = {}, onSave, onCancel }) {
       offset_days: initial.offset_days ?? 0,
       day_count_conv_id: initial.day_count_conv_id ?? ''
     });
-  }, [initial]);
+  }, [initial, isClone]);
 
   useEffect(() => {
     async function loadOptions() {
@@ -79,11 +79,11 @@ export default function BondForm({ initial = {}, onSave, onCancel }) {
 
   return (
     <div>
-      <h2>{form.id ? 'Edit Bond' : 'New Bond'}</h2>
+      <h2>{isClone ? 'Clone Bond' : (form.id ? 'Edit Bond' : 'New Bond')}</h2>
       <form onSubmit={submit}>
         <div className="form-group">
           <label>Ticker</label>
-          <input name="ticker" value={form.ticker} onChange={change} required />
+          <input name="ticker" value={form.ticker} onChange={change} required autoFocus />
         </div>
         <div className="form-group">
           <label>Issue Date</label>
