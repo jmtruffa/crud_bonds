@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import CashflowUploader from './CashflowUploader';
-import { levenshteinDistance } from '../levenshteinDist';
+import { levenshteinDistance, damerauLevenshteinOSA } from '../levenshteinDist';
 
 export default function BondList({ bonds, onEdit, onDelete, onClone }) {
   const [expandedId, setExpandedId] = useState(null);
@@ -32,7 +32,7 @@ let filteredBonds = bonds.filter(b => {
   
   // Fuzzy match con Levenshtein
   const maxDistance = search.length <= 3 ? 1 : 2;
-  const distance = levenshteinDistance(search, ticker);
+  const distance = damerauLevenshteinOSA(search, ticker);
   
   return distance <= maxDistance;
 });

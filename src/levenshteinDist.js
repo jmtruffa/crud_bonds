@@ -30,3 +30,42 @@ export function levenshteinDistance(str1, str2) {
 
   return matrix[len2][len1];
 }
+
+export function damerauLevenshteinOSA(a, b) {
+  const n = a.length, m = b.length;
+  if (n === 0) return m;
+  if (m === 0) return n;
+
+  let prev2 = new Int32Array(m + 1);            // row i-2
+  let prev1 = new Int32Array(m + 1);            // row i-1
+  for (let j = 0; j <= m; j++) prev1[j] = j;
+
+  let curr = new Int32Array(m + 1);             // row i
+  for (let i = 1; i <= n; i++) {
+    curr[0] = i;
+    const ai = a.charCodeAt(i - 1);
+    for (let j = 1; j <= m; j++) {
+      const cost = ai === b.charCodeAt(j - 1) ? 0 : 1;
+      let v = prev1[j - 1] + cost;              // sustitución/match
+      const ins = curr[j - 1] + 1;              // inserción
+      if (ins < v) v = ins;
+      const del = prev1[j] + 1;                 // borrado
+      if (del < v) v = del;
+
+      // transposición adyacente: a[i-1]==b[j-2] && a[i-2]==b[j-1]
+      if (i > 1 && j > 1 &&
+          ai === b.charCodeAt(j - 2) &&
+          a.charCodeAt(i - 2) === b.charCodeAt(j - 1)) {
+        const trans = prev2[j - 2] + 1;
+        if (trans < v) v = trans;
+      }
+
+      curr[j] = v;
+    }
+    prev2 = prev1;
+    prev1 = curr;
+    curr = new Int32Array(m + 1);
+  }
+
+  return prev1[m];
+}
