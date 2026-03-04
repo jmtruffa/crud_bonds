@@ -2,9 +2,11 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 
 const app = express();
-app.use(cors());
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 
 // ---------- Helpers ----------
@@ -30,7 +32,7 @@ const missing = [];
   if (!dbConfig[k]) missing.push(k);
 });
 if (missing.length > 0) {
-  console.error('❌ Faltan variables de configuración de la DB:', missing.join(', '));
+  console.error('Faltan variables de configuración de la DB:', missing.join(', '));
   console.error('Define POSTGRES_HOST, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB, POSTGRES_PORT.');
   process.exit(1);
 }
@@ -55,7 +57,10 @@ const pool = new Pool({
   ssl
 });
 
-console.log('🔧 Environment (DB):');
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '8h';
+
+console.log('Environment (DB):');
 console.log(`   POSTGRES_HOST: ${dbConfig.host}`);
 console.log(`   POSTGRES_USER: ${dbConfig.user}`);
 console.log(`   POSTGRES_DB: ${dbConfig.database}`);
@@ -63,10 +68,57 @@ console.log(`   POSTGRES_PORT: ${dbConfig.port}`);
 console.log(`   POSTGRES_SSL: ${ssl ? 'enabled' : 'disabled'}`);
 console.log(`   PORT: ${process.env.PORT || 4000}`);
 console.log(`   NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
+console.log(`   JWT_SECRET: ${JWT_SECRET === 'dev-secret-change-in-production' ? 'WARNING: using default (set JWT_SECRET env var!)' : 'configured'}`);
 
 pool.on('error', (err) => {
   console.error('Unexpected error on idle client', err);
 });
+
+// ---------- Auth Middleware ----------
+function authMiddleware(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Token requerido' });
+  }
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: 'Token inválido o expirado' });
+  }
+}
+
+// ---------- Auth Endpoints (public) ----------
+app.post('/auth/login', async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email y contraseña requeridos' });
+  }
+  try {
+    const { rows } = await pool.query('SELECT id, email, password_hash FROM users WHERE email = $1', [email]);
+    if (rows.length === 0) {
+      return res.status(401).json({ error: 'Credenciales inválidas' });
+    }
+    const user = rows[0];
+    const valid = await bcrypt.compare(password, user.password_hash);
+    if (!valid) {
+      return res.status(401).json({ error: 'Credenciales inválidas' });
+    }
+    const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+    res.json({ token, user: { id: user.id, email: user.email } });
+  } catch (err) {
+    console.error('Login error:', err);
+    sendError(res, err, 'Error en el login', 500);
+  }
+});
+
+// ---------- Apply auth to all API routes below ----------
+app.use('/bonds', authMiddleware);
+app.use('/indexes', authMiddleware);
+app.use('/day-count-conventions', authMiddleware);
+app.use('/admin', authMiddleware);
 
 // ---------- Endpoints ----------
 
@@ -117,21 +169,19 @@ app.get('/bonds/:id', async (req, res) => {
   }
 });
 
-// Create bond — manteniendo tu enfoque: LOCK + MAX(id)+1
+// Create bond
 app.post('/bonds', async (req, res) => {
   const { ticker, issue_date, maturity, coupon, index_code, offset_days, day_count_conv_id, active } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
-    // Resolve index_type_id from index_code if provided
     let index_type_id = null;
     if (index_code) {
       const r = await client.query('SELECT id FROM index_types WHERE code = $1 LIMIT 1', [index_code]);
       if (r.rows[0]) index_type_id = r.rows[0].id;
     }
 
-    // Lock table and compute new id = max(id) + 1 atomically
     await client.query('LOCK TABLE bonds IN EXCLUSIVE MODE');
     const maxRes = await client.query('SELECT COALESCE(MAX(id), 0) + 1 AS nid FROM bonds');
     const newId = maxRes.rows[0].nid;
@@ -182,19 +232,9 @@ app.put('/bonds/:id', async (req, res) => {
   }
 });
 
-// Delete bond
-app.delete('/bonds/:id', async (req, res) => {
-  const { id } = req.params;
-  try {
-    const result = await pool.query('DELETE FROM bonds WHERE id = $1', [id]);
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Bono no encontrado' });
-    }
-    res.status(204).end();
-  } catch (err) {
-    console.error(err);
-    sendError(res, err, 'No se pudo eliminar el bono', 500);
-  }
+// Delete bond - DISABLED: use DBeaver for direct table deletion
+app.delete('/bonds/:id', (req, res) => {
+  res.status(403).json({ error: 'Eliminación de bonos deshabilitada. Usar acceso directo a DB.' });
 });
 
 // ---------- Cashflows ----------
@@ -214,12 +254,12 @@ async function validateCashflowDateSequence(bondId, newDate, excludeId = null) {
   const query = excludeId
     ? `SELECT id, "date" FROM bond_cashflows WHERE bond_id = $1 AND id != $2 ORDER BY "date"`
     : `SELECT id, "date" FROM bond_cashflows WHERE bond_id = $1 ORDER BY "date"`;
-  
+
   const params = excludeId ? [bondId, excludeId] : [bondId];
   const result = await pool.query(query, params);
   const allCashflows = result.rows;
   if (allCashflows.length === 0) return;
-  
+
   const newDateObj = new Date(newDate);
   if (isNaN(newDateObj)) throw new Error('Fecha inválida');
 
@@ -271,7 +311,7 @@ async function recalculateCashflowResiduals(bondId) {
   }
 }
 
-// Add cashflow — manteniendo MAX(id)+1 + LOCK
+// Add cashflow
 app.post('/bonds/:id/cashflows', async (req, res) => {
   const bond_id = req.params.id;
   const { date, rate, amort, amount } = req.body;
@@ -284,20 +324,17 @@ app.post('/bonds/:id/cashflows', async (req, res) => {
 
     await validateCashflowDateSequence(bond_id, date);
 
-    // Next seq
     const seqRes = await client.query('SELECT COALESCE(MAX(seq), 0) as maxSeq FROM bond_cashflows WHERE bond_id = $1', [bond_id]);
     const nextSeq = seqRes.rows[0].maxseq + 1;
 
-    // Lock table and compute new id
     await client.query('LOCK TABLE bond_cashflows IN EXCLUSIVE MODE');
     const maxRes = await client.query('SELECT COALESCE(MAX(id), 0) + 1 as nid FROM bond_cashflows');
     const newId = maxRes.rows[0].nid;
 
-    // prev residual
     const prevRes = await client.query(`
-      SELECT residual FROM bond_cashflows 
-      WHERE bond_id = $1 
-      ORDER BY seq DESC 
+      SELECT residual FROM bond_cashflows
+      WHERE bond_id = $1
+      ORDER BY seq DESC
       LIMIT 1
     `, [bond_id]);
     const prevResidual = prevRes.rows.length > 0 ? parseFloat(prevRes.rows[0].residual) : 100;
@@ -308,7 +345,6 @@ app.post('/bonds/:id/cashflows', async (req, res) => {
       return res.status(400).json({ error: `Amortización excede residual disponible (${prevResidual}). Máximo allowed amort: ${prevResidual}` });
     }
 
-    // Validate existing amortizations won't cause negative residual later
     const allCashflows = await client.query('SELECT id, amort FROM bond_cashflows WHERE bond_id = $1 ORDER BY seq ASC', [bond_id]);
     let testResidual = 100;
     for (const cf of allCashflows.rows) {
@@ -479,7 +515,13 @@ app.delete('/admin/cleanup-null-cashflows', async (req, res) => {
   }
 });
 
-app.use(express.static('../build'));
+const path = require('path');
+app.use(express.static(path.join(__dirname, '..', 'dist')));
+
+// SPA fallback: any non-API route serves index.html
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'dist', 'index.html'));
+});
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, '0.0.0.0', () => {
