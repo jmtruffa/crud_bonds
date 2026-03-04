@@ -479,7 +479,9 @@ app.delete('/admin/cleanup-null-cashflows', async (req, res) => {
   }
 });
 
+app.use(express.static('../build'));
+
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server listening on ${PORT}`);
 });
