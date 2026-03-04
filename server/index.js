@@ -81,9 +81,9 @@ app.get('/bonds', async (req, res) => {
         c.convention AS day_count_conv,
         it.code AS index_code,
         it.name AS index_name
-      FROM mock_bonds b
-      LEFT JOIN mock_day_count_convention c ON b.day_count_conv = c.id
-      LEFT JOIN mock_index_types it ON b.index_type_id = it.id
+      FROM bonds b
+      LEFT JOIN day_count_convention c ON b.day_count_conv = c.id
+      LEFT JOIN index_types it ON b.index_type_id = it.id
       ORDER BY b.id
     `);
     res.json(rows);
@@ -105,9 +105,9 @@ app.get('/bonds/:id', async (req, res) => {
         c.convention AS day_count_conv,
         it.code AS index_code,
         it.name AS index_name
-      FROM mock_bonds b
-      LEFT JOIN mock_day_count_convention c ON b.day_count_conv = c.id
-      LEFT JOIN mock_index_types it ON b.index_type_id = it.id
+      FROM bonds b
+      LEFT JOIN day_count_convention c ON b.day_count_conv = c.id
+      LEFT JOIN index_types it ON b.index_type_id = it.id
       WHERE b.id = $1
     `, [id]);
     res.json(rows[0] || null);
@@ -127,16 +127,16 @@ app.post('/bonds', async (req, res) => {
     // Resolve index_type_id from index_code if provided
     let index_type_id = null;
     if (index_code) {
-      const r = await client.query('SELECT id FROM mock_index_types WHERE code = $1 LIMIT 1', [index_code]);
+      const r = await client.query('SELECT id FROM index_types WHERE code = $1 LIMIT 1', [index_code]);
       if (r.rows[0]) index_type_id = r.rows[0].id;
     }
 
     // Lock table and compute new id = max(id) + 1 atomically
-    await client.query('LOCK TABLE mock_bonds IN EXCLUSIVE MODE');
-    const maxRes = await client.query('SELECT COALESCE(MAX(id), 0) + 1 AS nid FROM mock_bonds');
+    await client.query('LOCK TABLE bonds IN EXCLUSIVE MODE');
+    const maxRes = await client.query('SELECT COALESCE(MAX(id), 0) + 1 AS nid FROM bonds');
     const newId = maxRes.rows[0].nid;
 
-    const q = `INSERT INTO mock_bonds
+    const q = `INSERT INTO bonds
       (id, ticker, issue_date, maturity, coupon, index_type_id, "offset", day_count_conv, active, created_at, updated_at)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, now(), now())
       RETURNING id, ticker, issue_date, maturity, coupon, index_type_id, "offset" AS offset_days, day_count_conv AS day_count_conv_id, active, created_at, updated_at`;
@@ -162,11 +162,11 @@ app.put('/bonds/:id', async (req, res) => {
   try {
     let index_type_id = null;
     if (index_code) {
-      const r = await pool.query('SELECT id FROM mock_index_types WHERE code = $1 LIMIT 1', [index_code]);
+      const r = await pool.query('SELECT id FROM index_types WHERE code = $1 LIMIT 1', [index_code]);
       if (r.rows[0]) index_type_id = r.rows[0].id;
     }
 
-    const q = `UPDATE mock_bonds SET
+    const q = `UPDATE bonds SET
                  ticker=$1, issue_date=$2, maturity=$3, coupon=$4,
                  index_type_id=$5, "offset"=$6, day_count_conv=$7, active=$8, updated_at=now()
                WHERE id=$9
@@ -186,7 +186,7 @@ app.put('/bonds/:id', async (req, res) => {
 app.delete('/bonds/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    const result = await pool.query('DELETE FROM mock_bonds WHERE id = $1', [id]);
+    const result = await pool.query('DELETE FROM bonds WHERE id = $1', [id]);
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Bono no encontrado' });
     }
@@ -202,7 +202,7 @@ app.delete('/bonds/:id', async (req, res) => {
 app.get('/bonds/:id/cashflows', async (req, res) => {
   const { id } = req.params;
   try {
-    const { rows } = await pool.query('SELECT id, bond_id, seq, "date", rate, amort, residual, amount, created_at FROM mock_bond_cashflows WHERE bond_id = $1 ORDER BY "date", seq', [id]);
+    const { rows } = await pool.query('SELECT id, bond_id, seq, "date", rate, amort, residual, amount, created_at FROM bond_cashflows WHERE bond_id = $1 ORDER BY "date", seq', [id]);
     res.json(rows);
   } catch (err) {
     console.error(err);
@@ -212,8 +212,8 @@ app.get('/bonds/:id/cashflows', async (req, res) => {
 
 async function validateCashflowDateSequence(bondId, newDate, excludeId = null) {
   const query = excludeId
-    ? `SELECT id, "date" FROM mock_bond_cashflows WHERE bond_id = $1 AND id != $2 ORDER BY "date"`
-    : `SELECT id, "date" FROM mock_bond_cashflows WHERE bond_id = $1 ORDER BY "date"`;
+    ? `SELECT id, "date" FROM bond_cashflows WHERE bond_id = $1 AND id != $2 ORDER BY "date"`
+    : `SELECT id, "date" FROM bond_cashflows WHERE bond_id = $1 ORDER BY "date"`;
   
   const params = excludeId ? [bondId, excludeId] : [bondId];
   const result = await pool.query(query, params);
@@ -250,7 +250,7 @@ async function recalculateCashflowResiduals(bondId) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const { rows } = await client.query('SELECT id, amort FROM mock_bond_cashflows WHERE bond_id = $1 ORDER BY seq ASC, "date" ASC', [bondId]);
+    const { rows } = await client.query('SELECT id, amort FROM bond_cashflows WHERE bond_id = $1 ORDER BY seq ASC, "date" ASC', [bondId]);
     let prevResidual = 100;
     for (const r of rows) {
       const amort = parseFloat(r.amort) || 0;
@@ -258,7 +258,7 @@ async function recalculateCashflowResiduals(bondId) {
       if (newResidual < 0) {
         throw new Error(`Residual negativo (${newResidual}) para cashflow ID ${r.id}. Reducir amortización.`);
       }
-      await client.query('UPDATE mock_bond_cashflows SET residual = $1 WHERE id = $2', [newResidual, r.id]);
+      await client.query('UPDATE bond_cashflows SET residual = $1 WHERE id = $2', [newResidual, r.id]);
       prevResidual = newResidual;
     }
     await client.query('COMMIT');
@@ -285,17 +285,17 @@ app.post('/bonds/:id/cashflows', async (req, res) => {
     await validateCashflowDateSequence(bond_id, date);
 
     // Next seq
-    const seqRes = await client.query('SELECT COALESCE(MAX(seq), 0) as maxSeq FROM mock_bond_cashflows WHERE bond_id = $1', [bond_id]);
+    const seqRes = await client.query('SELECT COALESCE(MAX(seq), 0) as maxSeq FROM bond_cashflows WHERE bond_id = $1', [bond_id]);
     const nextSeq = seqRes.rows[0].maxseq + 1;
 
     // Lock table and compute new id
-    await client.query('LOCK TABLE mock_bond_cashflows IN EXCLUSIVE MODE');
-    const maxRes = await client.query('SELECT COALESCE(MAX(id), 0) + 1 as nid FROM mock_bond_cashflows');
+    await client.query('LOCK TABLE bond_cashflows IN EXCLUSIVE MODE');
+    const maxRes = await client.query('SELECT COALESCE(MAX(id), 0) + 1 as nid FROM bond_cashflows');
     const newId = maxRes.rows[0].nid;
 
     // prev residual
     const prevRes = await client.query(`
-      SELECT residual FROM mock_bond_cashflows 
+      SELECT residual FROM bond_cashflows 
       WHERE bond_id = $1 
       ORDER BY seq DESC 
       LIMIT 1
@@ -309,7 +309,7 @@ app.post('/bonds/:id/cashflows', async (req, res) => {
     }
 
     // Validate existing amortizations won't cause negative residual later
-    const allCashflows = await client.query('SELECT id, amort FROM mock_bond_cashflows WHERE bond_id = $1 ORDER BY seq ASC', [bond_id]);
+    const allCashflows = await client.query('SELECT id, amort FROM bond_cashflows WHERE bond_id = $1 ORDER BY seq ASC', [bond_id]);
     let testResidual = 100;
     for (const cf of allCashflows.rows) {
       testResidual = testResidual - parseFloat(cf.amort || 0);
@@ -324,7 +324,7 @@ app.post('/bonds/:id/cashflows', async (req, res) => {
       return res.status(400).json({ error: `Esta amortización haría residual negativo (${testResidual}). Máximo permitido: ${prevResidual}` });
     }
 
-    const q = `INSERT INTO mock_bond_cashflows (id, bond_id, seq, "date", rate, amort, residual, amount, created_at)
+    const q = `INSERT INTO bond_cashflows (id, bond_id, seq, "date", rate, amort, residual, amount, created_at)
                VALUES ($1,$2,$3,$4,$5,$6,$7,$8, now()) RETURNING *`;
     const { rows } = await client.query(q, [newId, bond_id, nextSeq, date, rate, amort, expectedResidual, amount]);
 
@@ -332,7 +332,7 @@ app.post('/bonds/:id/cashflows', async (req, res) => {
 
     await recalculateCashflowResiduals(bond_id);
 
-    const { rows: updatedRows } = await pool.query('SELECT * FROM mock_bond_cashflows WHERE id=$1', [rows[0].id]);
+    const { rows: updatedRows } = await pool.query('SELECT * FROM bond_cashflows WHERE id=$1', [rows[0].id]);
     res.status(201).json(updatedRows[0]);
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
@@ -354,7 +354,7 @@ app.put('/bonds/:bondId/cashflows/:cfId', async (req, res) => {
     }
     await client.query('BEGIN');
 
-    const seqCheck = await client.query('SELECT id FROM mock_bond_cashflows WHERE bond_id = $1 AND seq = $2 AND id != $3', [bondId, seq, cfId]);
+    const seqCheck = await client.query('SELECT id FROM bond_cashflows WHERE bond_id = $1 AND seq = $2 AND id != $3', [bondId, seq, cfId]);
     if (seqCheck.rows.length > 0) {
       await client.query('ROLLBACK');
       return res.status(400).json({ error: `Sequence ${seq} ya existe para este bono` });
@@ -362,7 +362,7 @@ app.put('/bonds/:bondId/cashflows/:cfId', async (req, res) => {
 
     await validateCashflowDateSequence(bondId, date, cfId);
 
-    const allCashflows = await client.query('SELECT id, seq, amort FROM mock_bond_cashflows WHERE bond_id = $1 ORDER BY seq ASC', [bondId]);
+    const allCashflows = await client.query('SELECT id, seq, amort FROM bond_cashflows WHERE bond_id = $1 ORDER BY seq ASC', [bondId]);
     let testResidual = 100;
     for (const cf of allCashflows.rows) {
       const amortValue = (parseInt(cf.id) === parseInt(cfId)) ? parseFloat(amort || 0) : parseFloat(cf.amort || 0);
@@ -373,7 +373,7 @@ app.put('/bonds/:bondId/cashflows/:cfId', async (req, res) => {
       }
     }
 
-    const q = `UPDATE mock_bond_cashflows SET seq=$1, "date"=$2, rate=$3, amort=$4, amount=$5
+    const q = `UPDATE bond_cashflows SET seq=$1, "date"=$2, rate=$3, amort=$4, amount=$5
                WHERE id=$6 AND bond_id=$7
                RETURNING *`;
     const { rows } = await client.query(q, [seq, date, rate, amort, amount, cfId, bondId]);
@@ -385,7 +385,7 @@ app.put('/bonds/:bondId/cashflows/:cfId', async (req, res) => {
     await client.query('COMMIT');
 
     await recalculateCashflowResiduals(bondId);
-    const { rows: updated } = await pool.query('SELECT * FROM mock_bond_cashflows WHERE id=$1', [cfId]);
+    const { rows: updated } = await pool.query('SELECT * FROM bond_cashflows WHERE id=$1', [cfId]);
     res.json(updated[0]);
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
@@ -400,7 +400,7 @@ app.put('/bonds/:bondId/cashflows/:cfId', async (req, res) => {
 app.delete('/bonds/:bondId/cashflows/:cfId', async (req, res) => {
   const { bondId, cfId } = req.params;
   try {
-    const result = await pool.query('DELETE FROM mock_bond_cashflows WHERE id=$1 AND bond_id=$2', [parseInt(cfId), parseInt(bondId)]);
+    const result = await pool.query('DELETE FROM bond_cashflows WHERE id=$1 AND bond_id=$2', [parseInt(cfId), parseInt(bondId)]);
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Cashflow no encontrado' });
     }
@@ -432,7 +432,7 @@ app.post('/bonds/:id/cashflows/bulk-json', async (req, res) => {
       values.push(bond_id, r.seq, r.date, r.rate, r.amort, r.residual, r.amount);
     }
     if (placeholders.length > 0) {
-      const sql = `INSERT INTO mock_bond_cashflows (bond_id, seq, "date", rate, amort, residual, amount) VALUES ${placeholders.join(',')}`;
+      const sql = `INSERT INTO bond_cashflows (bond_id, seq, "date", rate, amort, residual, amount) VALUES ${placeholders.join(',')}`;
       await client.query(sql, values);
     }
     await client.query('COMMIT');
@@ -449,7 +449,7 @@ app.post('/bonds/:id/cashflows/bulk-json', async (req, res) => {
 // Indexes & day-counts
 app.get('/indexes', async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT code FROM mock_index_types ORDER BY code');
+    const { rows } = await pool.query('SELECT code FROM index_types ORDER BY code');
     res.json(rows.map(r => r.code));
   } catch (err) {
     console.error(err);
@@ -459,7 +459,7 @@ app.get('/indexes', async (req, res) => {
 
 app.get('/day-count-conventions', async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT id, convention FROM mock_day_count_convention ORDER BY convention');
+    const { rows } = await pool.query('SELECT id, convention FROM day_count_convention ORDER BY convention');
     const mapped = rows.map(r => ({ id: r.id, code: r.convention, description: null }));
     res.json(mapped);
   } catch (err) {
@@ -471,7 +471,7 @@ app.get('/day-count-conventions', async (req, res) => {
 // Admin cleanup (dev)
 app.delete('/admin/cleanup-null-cashflows', async (req, res) => {
   try {
-    const result = await pool.query('DELETE FROM mock_bond_cashflows WHERE id IS NULL');
+    const result = await pool.query('DELETE FROM bond_cashflows WHERE id IS NULL');
     res.json({ deletedCount: result.rowCount });
   } catch (err) {
     console.error(err);
