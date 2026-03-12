@@ -8,9 +8,9 @@ REGLAS IMPORTANTES:
 5. Devolvé EXCLUSIVAMENTE un JSON válido. Sin texto adicional, sin markdown, sin explicaciones.
 6. El JSON debe ser un objeto con una clave "cashflows" que contenga un array de objetos con estos campos exactos:
    - "date": string formato "YYYY-MM-DD"
-   - "rate": número entre 0 y 1 (tasa del cupón para ese período, ej: 0.05 para 5%)
-   - "amort": número (porcentaje de amortización sobre el nominal, ej: 10 para 10%)
-   - "amount": número (monto de pago en moneda original, si no está disponible usar 0)
+   - "rate": número entre 0 y 1 
+   - "amort": número 
+   - "amount": número 
 7. Las fechas deben estar en orden cronológico ascendente.
 8. La suma de todos los "amort" debe ser exactamente 100 (el bono se amortiza completamente).
 9. NO incluyas cashflows con fechas que ya existan en los cashflows cargados.

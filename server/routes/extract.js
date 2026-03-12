@@ -88,6 +88,31 @@ Devolvé un JSON con clave "cashflows" conteniendo el array de pagos.`;
 
     console.log(`[AI-Extract] userMessage total: ${userMessage.length} chars (~${Math.ceil(userMessage.length / 4)} tokens estimados)`);
 
+    // Debug mode: return the context without calling OpenAI
+    if (req.query.debug === 'true') {
+      return res.json({
+        debug: true,
+        bond: {
+          ticker: bond.ticker,
+          issue_date: bond.issue_date,
+          maturity: bond.maturity,
+          coupon: bond.coupon,
+          index_code: bond.index_code
+        },
+        pdfFiles: pdfTexts.map(p => ({ filename: p.filename, rawChars: p.text.length })),
+        ragChunks: filteredPdfTexts.map(p => ({
+          filename: p.filename,
+          filteredChars: p.text.length,
+          text: p.text
+        })),
+        existingCashflows: existingCfs.rows,
+        userMessageChars: userMessage.length,
+        estimatedTokens: Math.ceil(userMessage.length / 4),
+        systemPromptChars: systemPrompt.length,
+        userMessage
+      });
+    }
+
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [

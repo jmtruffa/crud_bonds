@@ -16,6 +16,7 @@ const pdfsRoutes = require('./routes/pdfs');
 const extractRoutes = require('./routes/extract');
 const referencesRoutes = require('./routes/references');
 const adminRoutes = require('./routes/admin');
+const publicPdfsRoutes = require('./routes/public-pdfs');
 
 const app = express();
 app.use(cors({ origin: true, credentials: true }));
@@ -31,6 +32,7 @@ printOpenaiConfig();
 
 // Public routes
 app.use('/auth', authRoutes);
+app.use('/pdfs', publicPdfsRoutes);
 
 // Protected routes
 app.use('/bonds', authMiddleware, bondsRoutes);

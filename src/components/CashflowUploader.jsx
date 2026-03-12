@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { getCashflows, updateCashflow, deleteCashflow, uploadCashflowsJson, uploadBondPdfs, listBondPdfs, extractCashflowsAI } from '../api';
+import { getCashflows, updateCashflow, deleteCashflow, uploadCashflowsJson, uploadBondPdfs, listBondPdfs, deleteBondPdf, extractCashflowsAI, debugExtractAI } from '../api';
 import { generateCashflowDates } from '../utils/dateHelpers';
 
 export default function CashflowUploader({ bond }) {
@@ -81,6 +81,50 @@ export default function CashflowUploader({ bond }) {
   function handleViewPdf(url) {
     const base = import.meta.env.VITE_API_BASE_URL || '';
     window.open(base + url, '_blank');
+  }
+
+  async function handleDeletePdf(filename) {
+    if (!window.confirm(`¿Eliminar ${filename}?`)) return;
+    try {
+      await deleteBondPdf(bond.ticker, filename);
+      setUploadedPdfs(prev => prev.filter(p => p.filename !== filename));
+    } catch (err) {
+      console.error(err);
+      alert('Error al eliminar PDF: ' + err.message);
+    }
+  }
+
+  async function handleDebugExtract() {
+    if (uploadedPdfs.length === 0) {
+      alert('Primero subí al menos un PDF.');
+      return;
+    }
+    try {
+      const data = await debugExtractAI(bond.id);
+      console.log('[DEBUG AI Extract]', data);
+      const debugWindow = window.open('', '_blank');
+      if (debugWindow) {
+        debugWindow.document.write(`<html><head><title>Debug AI - ${bond.ticker}</title>
+          <style>body{font-family:monospace;padding:20px;background:#1e1e1e;color:#d4d4d4}
+          h2{color:#569cd6}h3{color:#4ec9b0;margin-top:24px}
+          pre{background:#2d2d2d;padding:12px;border-radius:6px;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+          .stat{color:#dcdcaa}</style></head><body>`);
+        debugWindow.document.write(`<h2>Debug AI Extract — ${bond.ticker}</h2>`);
+        debugWindow.document.write(`<p class="stat">User message: ${data.userMessageChars} chars (~${data.estimatedTokens} tokens) | System prompt: ${data.systemPromptChars} chars</p>`);
+        debugWindow.document.write(`<h3>Bond Info</h3><pre>${JSON.stringify(data.bond, null, 2)}</pre>`);
+        debugWindow.document.write(`<h3>PDF Files</h3><pre>${JSON.stringify(data.pdfFiles, null, 2)}</pre>`);
+        debugWindow.document.write(`<h3>Existing Cashflows (${data.existingCashflows.length})</h3><pre>${JSON.stringify(data.existingCashflows, null, 2)}</pre>`);
+        for (const chunk of data.ragChunks) {
+          debugWindow.document.write(`<h3>RAG Text — ${chunk.filename} (${chunk.filteredChars} chars)</h3><pre>${chunk.text.replace(/</g, '&lt;')}</pre>`);
+        }
+        debugWindow.document.write(`<h3>Full User Message</h3><pre>${data.userMessage.replace(/</g, '&lt;')}</pre>`);
+        debugWindow.document.write('</body></html>');
+        debugWindow.document.close();
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Debug error: ' + err.message);
+    }
   }
 
   async function handleAiExtract() {
@@ -396,19 +440,35 @@ export default function CashflowUploader({ bond }) {
           >
             {aiLoading ? '⏳ Extrayendo...' : '🤖 Extraer con IA'}
           </button>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={handleDebugExtract}
+            disabled={uploadedPdfs.length === 0}
+            title="Ver qué texto lee la IA (sin llamar a OpenAI)"
+          >
+            🔍 Debug
+          </button>
         </div>
         {uploadedPdfs.length > 0 && (
           <div className="pdf-list">
             <span className="pdf-list-label">PDFs subidos:</span>
             {uploadedPdfs.map((p, i) => (
-              <button
-                key={i}
-                className="btn btn-sm btn-pdf"
-                onClick={() => handleViewPdf(p.url || p.path)}
-                title="Abrir PDF en nueva pestaña"
-              >
-                📎 {p.filename}
-              </button>
+              <span key={i} className="pdf-item">
+                <button
+                  className="btn btn-sm btn-pdf"
+                  onClick={() => handleViewPdf(p.url || p.path)}
+                  title="Abrir PDF en nueva pestaña"
+                >
+                  📎 {p.filename}
+                </button>
+                <button
+                  className="btn btn-sm btn-danger pdf-delete-btn"
+                  onClick={() => handleDeletePdf(p.filename)}
+                  title="Eliminar PDF"
+                >
+                  ✕
+                </button>
+              </span>
             ))}
           </div>
         )}

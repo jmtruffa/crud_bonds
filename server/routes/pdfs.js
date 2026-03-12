@@ -40,7 +40,7 @@ router.post('/:ticker/pdfs', upload.array('pdfs', 10), async (req, res) => {
       uploaded.push({
         filename,
         size: file.size,
-        path: `/bonds/${ticker}/pdfs/${filename}`
+        path: `/pdfs/${ticker}/${filename}`
       });
     }
     console.log(`[GCS] Uploaded ${uploaded.length} PDFs for ${ticker}`);
@@ -61,7 +61,7 @@ router.get('/:ticker/pdfs', async (req, res) => {
       .filter(f => f.name.endsWith('.pdf'))
       .map(f => {
         const filename = f.name.split('/').pop();
-        return { filename, url: `/bonds/${ticker}/pdfs/${filename}` };
+        return { filename, url: `/pdfs/${ticker}/${filename}` };
       });
     res.json(pdfs);
   } catch (err) {
@@ -70,8 +70,8 @@ router.get('/:ticker/pdfs', async (req, res) => {
   }
 });
 
-// Serve a PDF file (stream from GCS)
-router.get('/:ticker/pdfs/:filename', async (req, res) => {
+// Delete a PDF from GCS
+router.delete('/:ticker/pdfs/:filename', async (req, res) => {
   if (!gcsBucket) return res.status(503).json({ error: 'GCS no configurado' });
   const ticker = req.params.ticker.toUpperCase().replace(/[^A-Z0-9_-]/g, '');
   const filename = path.basename(req.params.filename).replace(/[^A-Z0-9_.\-]/gi, '');
@@ -80,11 +80,12 @@ router.get('/:ticker/pdfs/:filename', async (req, res) => {
     const blob = gcsBucket.file(gcsPath);
     const [exists] = await blob.exists();
     if (!exists) return res.status(404).json({ error: 'PDF no encontrado' });
-    res.setHeader('Content-Type', 'application/pdf');
-    blob.createReadStream().pipe(res);
+    await blob.delete();
+    console.log(`[GCS] Deleted ${gcsPath}`);
+    res.json({ deleted: filename });
   } catch (err) {
-    console.error('GCS download error:', err);
-    sendError(res, err, 'Error descargando PDF', 500);
+    console.error('GCS delete error:', err);
+    sendError(res, err, 'Error eliminando PDF', 500);
   }
 });
 

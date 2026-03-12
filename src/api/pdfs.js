@@ -24,3 +24,6 @@ export async function uploadBondPdfs(ticker, files) {
 }
 
 export const listBondPdfs = (ticker) => request(`/bonds/${ticker}/pdfs`);
+
+export const deleteBondPdf = (ticker, filename) =>
+  request(`/bonds/${ticker}/pdfs/${filename}`, { method: 'DELETE' });
