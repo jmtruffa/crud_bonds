@@ -343,6 +343,45 @@ h1 {
   font-size: 13px;
 }
 
+.preload-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.preload-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 100;
+  min-width: 150px;
+  overflow: hidden;
+}
+
+.preload-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 14px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  cursor: pointer;
+  color: #333;
+}
+
+.preload-menu button:hover {
+  background-color: #e3f2fd;
+}
+
+.preload-menu button + button {
+  border-top: 1px solid #eee;
+}
+
 .cashflow-table-wrapper {
   margin-bottom: 12px;
   overflow-x: auto;
@@ -360,6 +399,16 @@ h1 {
   margin-bottom: 12px;
 }
 
+.save-all-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background-color: #eaf7ea;
+  border: 1px solid #b2d8b2;
+  border-top: none;
+}
+
 .cashflow-table-footer .btn:disabled {
   background-color: #ccc;
   cursor: not-allowed;
@@ -370,6 +419,91 @@ h1 {
   color: #e74c3c;
   font-weight: 500;
   font-size: 13px;
+}
+
+/* PDF Upload & AI Section */
+.pdf-section {
+  margin: 12px 0;
+  padding: 12px;
+  background: #f5f7fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+}
+
+.pdf-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pdf-input {
+  font-size: 13px;
+}
+
+.btn-ai {
+  background-color: #7c3aed;
+  color: #fff;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+.btn-ai:hover:not(:disabled) {
+  background-color: #6d28d9;
+}
+.btn-ai:disabled {
+  background-color: #c4b5fd;
+  cursor: not-allowed;
+}
+
+.pdf-list {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.pdf-list-label {
+  font-size: 13px;
+  color: #666;
+  font-weight: 500;
+}
+.btn-pdf {
+  background: #e0e7ff;
+  color: #3730a3;
+  border: 1px solid #c7d2fe;
+  padding: 3px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.btn-pdf:hover {
+  background: #c7d2fe;
+}
+
+.ai-validation {
+  margin-top: 8px;
+  font-size: 13px;
+}
+.ai-warnings {
+  color: #b45309;
+  background: #fef3c7;
+  padding: 6px 10px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+}
+.ai-errors {
+  color: #dc2626;
+  background: #fee2e2;
+  padding: 6px 10px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+}
+.ai-info {
+  color: #6b7280;
+  padding: 4px 0;
 }
 
 /* Editable table (cashflow Excel-like) */

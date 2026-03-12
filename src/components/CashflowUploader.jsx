@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { getCashflows, createCashflow, updateCashflow, deleteCashflow } from '../api';
+import { getCashflows, updateCashflow, deleteCashflow, uploadCashflowsJson, uploadBondPdfs, listBondPdfs, extractCashflowsAI } from '../api';
+import { generateCashflowDates } from '../utils/dateHelpers';
 
 export default function CashflowUploader({ bond }) {
   const [cashflows, setCashflows] = useState([]);
@@ -9,7 +10,14 @@ export default function CashflowUploader({ bond }) {
   const [lastSeq, setLastSeq] = useState(0);
   const [lastResidual, setLastResidual] = useState(100);
   const [newCashflows, setNewCashflows] = useState([]);
+  const [showPreloadMenu, setShowPreloadMenu] = useState(false);
+  const [pdfFiles, setPdfFiles] = useState([]);
+  const [uploadedPdfs, setUploadedPdfs] = useState([]);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiValidation, setAiValidation] = useState(null);
   const tableRef = useRef(null);
+  const preloadRef = useRef(null);
+  const pdfInputRef = useRef(null);
 
   async function load() {
     if (!bond) return;
@@ -35,6 +43,123 @@ export default function CashflowUploader({ bond }) {
 
   useEffect(() => { load(); }, [bond]);
 
+  // Load uploaded PDFs list
+  useEffect(() => {
+    if (bond && bond.ticker) {
+      listBondPdfs(bond.ticker).then(setUploadedPdfs).catch(() => setUploadedPdfs([]));
+    }
+  }, [bond]);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (preloadRef.current && !preloadRef.current.contains(e.target)) {
+        setShowPreloadMenu(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  async function handlePdfUpload() {
+    if (pdfFiles.length === 0) return;
+    if (pdfFiles.length > 10) {
+      alert('Máximo 10 archivos PDF.');
+      return;
+    }
+    try {
+      const result = await uploadBondPdfs(bond.ticker, pdfFiles);
+      setPdfFiles([]);
+      if (pdfInputRef.current) pdfInputRef.current.value = '';
+      setUploadedPdfs(prev => [...prev, ...result.uploaded]);
+      alert(`${result.uploaded.length} PDF(s) subidos correctamente.`);
+    } catch (err) {
+      console.error(err);
+      alert('Error al subir PDFs: ' + err.message);
+    }
+  }
+
+  function handleViewPdf(url) {
+    const base = import.meta.env.VITE_API_BASE_URL || '';
+    window.open(base + url, '_blank');
+  }
+
+  async function handleAiExtract() {
+    if (uploadedPdfs.length === 0) {
+      alert('Primero subí al menos un PDF.');
+      return;
+    }
+    setAiLoading(true);
+    setAiValidation(null);
+    try {
+      const result = await extractCashflowsAI(bond.id);
+      setAiValidation(result.validation);
+
+      if (result.cashflows && result.cashflows.length > 0) {
+        const baseSeq = lastSeq + newCashflows.length;
+        let currentResidual = lastResidual;
+        // Recalc residuals for the new rows that may already be loaded
+        for (const nc of newCashflows) {
+          currentResidual = +(currentResidual - (parseFloat(nc.amort) || 0)).toFixed(2);
+        }
+        const rows = result.cashflows.map((cf, i) => {
+          const amort = parseFloat(cf.amort) || 0;
+          currentResidual = +(currentResidual - amort).toFixed(2);
+          return {
+            tempId: `ai-${Date.now()}-${i}`,
+            seq: (baseSeq + i + 1).toString(),
+            date: cf.date,
+            rate: cf.rate.toString(),
+            amort: cf.amort.toString(),
+            residual: currentResidual.toString(),
+            amount: cf.amount.toString()
+          };
+        });
+        setNewCashflows(prev => [...prev, ...rows]);
+        setShowTable(true);
+      } else {
+        alert('La IA no pudo extraer cashflows de los PDFs.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error en extracción IA: ' + err.message);
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  function handlePreload(stepMonths) {
+    setShowPreloadMenu(false);
+    if (!bond.issue_date || !bond.maturity) {
+      alert('El bono debe tener issue date y maturity definidos.');
+      return;
+    }
+    const issueStr = typeof bond.issue_date === 'string' ? bond.issue_date.split('T')[0] : bond.issue_date;
+    const maturityStr = typeof bond.maturity === 'string' ? bond.maturity.split('T')[0] : bond.maturity;
+    const allDates = generateCashflowDates(issueStr, maturityStr, stepMonths);
+    // Filter: only keep dates after the last existing cashflow date
+    let dates = allDates;
+    if (cashflows.length > 0) {
+      const lastExistingDate = cashflows[cashflows.length - 1].date.split('T')[0];
+      dates = allDates.filter(d => d > lastExistingDate);
+    }
+    if (dates.length === 0) {
+      alert('No hay fechas nuevas para precargar. Todas las fechas ya están cubiertas por cashflows existentes.');
+      return;
+    }
+    const baseSeq = lastSeq + newCashflows.length;
+    const rows = dates.map((date, i) => ({
+      tempId: `new-${Date.now()}-${i}`,
+      seq: (baseSeq + i + 1).toString(),
+      date,
+      rate: '',
+      amort: '',
+      residual: lastResidual.toString(),
+      amount: ''
+    }));
+    setNewCashflows(prev => [...prev, ...rows]);
+    setShowTable(true);
+  }
+
   const handleEditStart = (cfId) => {
     const cf = cashflows.find(c => c.id === cfId);
     if (cf) {
@@ -53,13 +178,29 @@ export default function CashflowUploader({ bond }) {
   };
 
   const handleEditChange = (cfId, field, value) => {
-    setEditingRows(prev => ({
-      ...prev,
-      [cfId]: {
-        ...prev[cfId],
-        [field]: value
+    setEditingRows(prev => {
+      const newState = {
+        ...prev,
+        [cfId]: {
+          ...prev[cfId],
+          [field]: value
+        }
+      };
+      // Real-time residual recalculation when amort changes
+      if (field === 'amort') {
+        const cfIndex = cashflows.findIndex(c => c.id === cfId);
+        let prevResidual = 100;
+        if (cfIndex > 0) {
+          const prevCf = cashflows[cfIndex - 1];
+          prevResidual = newState[prevCf.id]
+            ? parseFloat(newState[prevCf.id].residual) || 0
+            : parseFloat(prevCf.residual);
+        }
+        const newResidual = +(prevResidual - (parseFloat(value) || 0)).toFixed(2);
+        newState[cfId] = { ...newState[cfId], residual: newResidual.toString() };
       }
-    }));
+      return newState;
+    });
   };
 
   const handleEditCancel = (cfId) => {
@@ -114,33 +255,72 @@ export default function CashflowUploader({ bond }) {
   };
 
   const handleNewCashflowChange = (tempId, field, value) => {
-    setNewCashflows(prev => 
-      prev.map(row => row.tempId === tempId ? { ...row, [field]: value } : row)
-    );
+    setNewCashflows(prev => {
+      const updated = prev.map(row =>
+        row.tempId === tempId ? { ...row, [field]: value } : row
+      );
+      // Real-time residual recalculation when amort changes
+      if (field === 'amort') {
+        let currentResidual = lastResidual;
+        for (let i = 0; i < updated.length; i++) {
+          const amort = parseFloat(updated[i].amort) || 0;
+          currentResidual = +(currentResidual - amort).toFixed(2);
+          updated[i] = { ...updated[i], residual: currentResidual.toString() };
+        }
+      }
+      return updated;
+    });
   };
 
-  async function handleNewCashflowSave(tempId) {
-    const newRow = newCashflows.find(row => row.tempId === tempId);
-    const data = {
-      seq: parseInt(newRow.seq),
-      date: newRow.date,
-      rate: parseFloat(newRow.rate),
-      amort: parseFloat(newRow.amort),
-      residual: parseFloat(newRow.residual),
-      amount: parseFloat(newRow.amount)
-    };
-
-    try {
-      if (!data.date || !data.amort || !data.amount) {
-        alert('Please fill in all required fields');
-        return;
+  async function handleSaveAll() {
+    if (newCashflows.length === 0) return;
+    // Pre-save validation
+    const errors = [];
+    let currentResidual = lastResidual;
+    for (let i = 0; i < newCashflows.length; i++) {
+      const row = newCashflows[i];
+      const rowNum = i + 1;
+      if (!row.date) errors.push(`Fila ${rowNum}: falta fecha`);
+      if (row.rate === '' || row.rate === undefined) errors.push(`Fila ${rowNum}: falta rate`);
+      if (row.amort === '' || row.amort === undefined) errors.push(`Fila ${rowNum}: falta amort`);
+      if (row.amount === '' || row.amount === undefined) errors.push(`Fila ${rowNum}: falta amount`);
+      const rate = parseFloat(row.rate);
+      if (!isNaN(rate) && (rate < 0 || rate > 1)) {
+        errors.push(`Fila ${rowNum}: rate debe estar entre 0 y 1`);
       }
-      await createCashflow(bond.id, data);
-      load();
-      setNewCashflows(prev => prev.filter(row => row.tempId !== tempId));
+      const amort = parseFloat(row.amort) || 0;
+      currentResidual = +(currentResidual - amort).toFixed(2);
+      if (currentResidual < 0) {
+        errors.push(`Fila ${rowNum}: residual sería negativo (${currentResidual})`);
+      }
+      if (i > 0 && row.date && newCashflows[i - 1].date && row.date <= newCashflows[i - 1].date) {
+        errors.push(`Fila ${rowNum}: fecha debe ser posterior a la fila anterior`);
+      }
+    }
+    // Check first new date is after last existing cashflow
+    if (cashflows.length > 0 && newCashflows[0].date) {
+      const lastExistingDate = cashflows[cashflows.length - 1].date.split('T')[0];
+      if (newCashflows[0].date <= lastExistingDate) {
+        errors.push(`La primera fecha debe ser posterior al último cashflow existente (${lastExistingDate})`);
+      }
+    }
+    if (errors.length > 0) {
+      alert('Errores de validación:\n' + errors.join('\n'));
+      return;
+    }
+    const payload = newCashflows.map(row => ({
+      date: row.date,
+      rate: parseFloat(row.rate),
+      amort: parseFloat(row.amort),
+      amount: parseFloat(row.amount)
+    }));
+    try {
+      await uploadCashflowsJson(bond.id, payload);
+      setNewCashflows([]);
+      await load();
     } catch (err) {
       console.error(err);
-      alert('Save failed: ' + err.message);
+      alert('Error al guardar: ' + err.message);
     }
   }
 
@@ -173,6 +353,84 @@ export default function CashflowUploader({ bond }) {
         >
           {showTable ? '▼ Hide' : '▶ Show'} Cashflows Table ({cashflows.length})
         </button>
+        <div className="preload-dropdown" ref={preloadRef}>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setShowPreloadMenu(!showPreloadMenu)}
+          >
+            📅 Precargar formato ▾
+          </button>
+          {showPreloadMenu && (
+            <div className="preload-menu">
+              <button onClick={() => handlePreload(1)}>Mensual</button>
+              <button onClick={() => handlePreload(3)}>Trimestral</button>
+              <button onClick={() => handlePreload(6)}>Semestral</button>
+              <button onClick={() => handlePreload(12)}>Anual</button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* PDF Upload & AI Extraction */}
+      <div className="pdf-section">
+        <div className="pdf-upload-row">
+          <input
+            ref={pdfInputRef}
+            type="file"
+            accept=".pdf"
+            multiple
+            onChange={(e) => setPdfFiles(Array.from(e.target.files))}
+            className="pdf-input"
+          />
+          <button
+            className="btn btn-secondary"
+            onClick={handlePdfUpload}
+            disabled={pdfFiles.length === 0}
+          >
+            📄 Subir PDFs
+          </button>
+          <button
+            className="btn btn-ai"
+            onClick={handleAiExtract}
+            disabled={aiLoading || uploadedPdfs.length === 0}
+          >
+            {aiLoading ? '⏳ Extrayendo...' : '🤖 Extraer con IA'}
+          </button>
+        </div>
+        {uploadedPdfs.length > 0 && (
+          <div className="pdf-list">
+            <span className="pdf-list-label">PDFs subidos:</span>
+            {uploadedPdfs.map((p, i) => (
+              <button
+                key={i}
+                className="btn btn-sm btn-pdf"
+                onClick={() => handleViewPdf(p.url || p.path)}
+                title="Abrir PDF en nueva pestaña"
+              >
+                📎 {p.filename}
+              </button>
+            ))}
+          </div>
+        )}
+        {aiValidation && (
+          <div className="ai-validation">
+            {aiValidation.warnings.length > 0 && (
+              <div className="ai-warnings">
+                ⚠️ {aiValidation.warnings.join(' | ')}
+              </div>
+            )}
+            {aiValidation.errors.length > 0 && (
+              <div className="ai-errors">
+                ❌ {aiValidation.errors.join(' | ')}
+              </div>
+            )}
+            <div className="ai-info">
+              PDFs usados: {aiValidation.pdfFilesUsed.join(', ')} · 
+              Amort nuevo: {aiValidation.totalNewAmort} · 
+              Amort existente: {aiValidation.totalExistingAmort}
+            </div>
+          </div>
+        )}
       </div>
 
       {showTable && (
@@ -351,22 +609,27 @@ export default function CashflowUploader({ bond }) {
                     </td>
                     <td className="table-actions">
                       <button 
-                        className="btn btn-sm btn-success" 
-                        onClick={() => handleNewCashflowSave(newRow.tempId)}
-                      >
-                        Save
-                      </button>
-                      <button 
-                        className="btn btn-sm btn-secondary" 
+                        className="btn btn-sm btn-danger" 
                         onClick={() => handleNewCashflowCancel(newRow.tempId)}
+                        title="Quitar fila"
                       >
-                        Cancel
+                        ✕
                       </button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            {newCashflows.length > 0 && (
+              <div className="save-all-bar">
+                <button className="btn btn-success" onClick={handleSaveAll}>
+                  💾 Guardar Todo ({newCashflows.length} cashflows)
+                </button>
+                <button className="btn btn-secondary" onClick={() => setNewCashflows([])}>
+                  Cancelar Todo
+                </button>
+              </div>
+            )}
             <div className="cashflow-table-footer">
               <button 
                 className="btn btn-secondary"
