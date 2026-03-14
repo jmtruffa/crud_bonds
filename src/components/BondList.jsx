@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import CashflowUploader from './CashflowUploader';
 import BondReadOnlyRow from './BondReadOnlyRow';
 import BondEditableRow from './BondEditableRow';
+import CreateBondModal from './CreateBondModal';
 import { damerauLevenshteinOSA } from '../utils/stringDistance';
 import { getIndexes, getDayCountConventions } from '../api';
 
@@ -18,6 +19,7 @@ export default function BondList({ bonds, onSave, onRefresh }) {
 
   const [indexOptions, setIndexOptions] = useState([]);
   const [conventionOptions, setConventionOptions] = useState([]);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   useEffect(() => {
     Promise.all([getIndexes(), getDayCountConventions()])
@@ -162,6 +164,9 @@ export default function BondList({ bonds, onSave, onRefresh }) {
           <button className="btn btn-success" onClick={startNew} disabled={editingId !== null}>
             + New Bond
           </button>
+          <button className="btn btn-primary" onClick={() => setShowCreateModal(true)} disabled={editingId !== null}>
+            + Create from PDF
+          </button>
         </div>
       </div>
 
@@ -253,6 +258,14 @@ export default function BondList({ bonds, onSave, onRefresh }) {
             Next →
           </button>
         </div>
+      )}
+      {showCreateModal && (
+        <CreateBondModal
+          indexOptions={indexOptions}
+          conventionOptions={conventionOptions}
+          onSuccess={() => { setShowCreateModal(false); onRefresh(); }}
+          onClose={() => setShowCreateModal(false)}
+        />
       )}
     </div>
   );

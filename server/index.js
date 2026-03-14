@@ -17,6 +17,7 @@ const extractRoutes = require('./routes/extract');
 const referencesRoutes = require('./routes/references');
 const adminRoutes = require('./routes/admin');
 const publicPdfsRoutes = require('./routes/public-pdfs');
+const extractFromPdfsRoutes = require('./routes/extractFromPdfs');
 
 const app = express();
 app.use(cors({ origin: true, credentials: true }));
@@ -41,6 +42,7 @@ app.use('/bonds', authMiddleware, pdfsRoutes);
 app.use('/bonds', authMiddleware, extractRoutes);
 app.use('/', authMiddleware, referencesRoutes);
 app.use('/admin', authMiddleware, adminRoutes);
+app.use('/extract-from-pdfs', authMiddleware, extractFromPdfsRoutes);
 
 // SPA static files
 app.use(express.static(path.join(__dirname, '..', 'dist')));

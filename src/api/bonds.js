@@ -7,3 +7,6 @@ export const createBond = (b) =>
 
 export const updateBond = (id, b) =>
   request(`/bonds/${id}`, { method: 'PUT', body: JSON.stringify(b) });
+
+export const createBondWithCashflows = (bond, cashflows) =>
+  request('/bonds/with-cashflows', { method: 'POST', body: JSON.stringify({ bond, cashflows }) });

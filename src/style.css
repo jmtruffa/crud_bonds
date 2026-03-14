@@ -625,3 +625,176 @@ h1 {
     width: 100%;
   }
 }
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 1000;
+  padding: 40px 16px;
+  overflow-y: auto;
+}
+
+.modal-panel {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 18px;
+  color: #2c3e50;
+}
+
+.modal-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-body h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  color: #2c3e50;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 6px;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding-top: 8px;
+}
+
+.modal-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.modal-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.modal-form-field label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #555;
+}
+
+.modal-error {
+  background: #fdecea;
+  color: #c0392b;
+  border: 1px solid #e74c3c;
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin: 12px 20px 0;
+  font-size: 13px;
+}
+
+.modal-warnings {
+  background: #fff8e1;
+  color: #7d5a00;
+  border: 1px solid #f0c040;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.modal-errors-list {
+  background: #fdecea;
+  color: #c0392b;
+  border: 1px solid #e74c3c;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.modal-cf-table-wrap {
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid #eee;
+  border-radius: 4px;
+}
+
+.modal-cf-table-wrap .table {
+  margin-bottom: 0;
+}
+
+.edit-input-sm {
+  width: 80px;
+  padding: 3px 5px;
+  font-size: 12px;
+}
+
+.pdf-count {
+  font-size: 12px;
+  color: #555;
+  margin-top: 4px;
+}
+
+.btn-primary {
+  background-color: #8e44ad;
+}
+
+.btn-primary:hover {
+  background-color: #7d3c98;
+}
+
+/* Modal debug output */
+.modal-debug {
+  border: 1px solid #b0c4de;
+  border-radius: 4px;
+  background: #f0f4f8;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.modal-debug-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: #333;
+}
+
+.modal-debug-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.modal-debug-section textarea {
+  width: 100%;
+  font-family: monospace;
+  font-size: 11px;
+  resize: vertical;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  padding: 6px;
+  background: #fff;
+  box-sizing: border-box;
+}
