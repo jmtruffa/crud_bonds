@@ -8,6 +8,60 @@ const { sendError } = require('../middleware/auth');
 
 const router = express.Router();
 
+// ~75k tokens for user message — safely under gpt-4o-mini's 128k limit
+// (leaves room for system prompt ~400 tokens + response 16k tokens)
+const MAX_USER_CHARS = 300_000;
+
+const CF_KEYWORDS = [
+  'fecha', 'pago', 'amortiz', 'tasa', 'cuota', 'capital',
+  'interés', 'interes', 'vencimiento', 'período', 'periodo',
+  'residual', 'cronograma', 'flujo', 'cashflow', 'schedule',
+  'payment', 'maturity', 'coupon', 'rate', 'amort', 'interest',
+];
+
+function scoreChunk(text) {
+  const lower = text.toLowerCase();
+  let score = CF_KEYWORDS.reduce((s, kw) => s + (lower.includes(kw) ? 1 : 0), 0);
+  // Bonus for date patterns (YYYY-MM-DD or DD/MM/YYYY)
+  score += Math.min((text.match(/\d{4}[-/]\d{2}[-/]\d{2}|\d{2}[-/]\d{2}[-/]\d{4}/g) || []).length * 2, 10);
+  // Bonus for decimal numbers (financial data)
+  score += Math.min((text.match(/\d+[.,]\d+/g) || []).length, 5);
+  return score;
+}
+
+function selectRelevantText(text, budget) {
+  if (text.length <= budget) return text;
+
+  const CHUNK = 800;
+  const STEP = 700; // 100-char overlap
+  const chunks = [];
+  for (let i = 0; i < text.length; i += STEP) {
+    chunks.push({ start: i, text: text.slice(i, i + CHUNK) });
+  }
+  chunks.forEach(c => { c.score = scoreChunk(c.text); });
+
+  // Pick highest-scoring chunks until budget is full
+  const byScore = [...chunks].sort((a, b) => b.score - a.score);
+  const kept = new Set();
+  let used = 0;
+  for (const c of byScore) {
+    if (used + c.text.length > budget) break;
+    kept.add(c.start);
+    used += c.text.length;
+  }
+
+  // Reassemble in document order, insert […] where sections were dropped
+  const result = [];
+  let prevEnd = -1;
+  for (const c of chunks) {
+    if (!kept.has(c.start)) continue;
+    if (prevEnd !== -1 && c.start > prevEnd) result.push('\n[…]\n');
+    result.push(c.text);
+    prevEnd = c.start + c.text.length;
+  }
+  return result.join('');
+}
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 50 * 1024 * 1024 },
@@ -32,11 +86,23 @@ router.post('/', upload.array('pdfs', 10), async (req, res) => {
       pdfTexts.push({ filename, text: parsed.text });
     }
 
-    const concatenatedText = pdfTexts
+    const rawTotal = pdfTexts.reduce((s, p) => s + p.text.length, 0);
+
+    // Per-file budget: distribute MAX_USER_CHARS proportionally by file size
+    const processedTexts = pdfTexts.map(p => {
+      const fileBudget = Math.floor((p.text.length / rawTotal) * MAX_USER_CHARS);
+      const filtered = selectRelevantText(p.text, fileBudget);
+      if (filtered.length < p.text.length) {
+        console.log(`[ExtractFromPdfs] "${p.filename}": ${p.text.length} -> ${filtered.length} chars (keyword filter)`);
+      }
+      return { filename: p.filename, text: filtered, originalChars: p.text.length };
+    });
+
+    const concatenatedText = processedTexts
       .map(p => `--- ${p.filename} ---\n${p.text}`)
       .join('\n\n');
 
-    console.log(`[ExtractFromPdfs] Total texto: ${concatenatedText.length} chars (~${Math.ceil(concatenatedText.length / 4)} tokens estimados)`);
+    console.log(`[ExtractFromPdfs] Total texto: ${rawTotal} raw -> ${concatenatedText.length} chars (~${Math.ceil(concatenatedText.length / 4)} tokens estimados)`);
 
     const systemPromptPath = path.join(__dirname, '..', 'system_prompt_cashflows.txt');
     const systemPrompt = fs.readFileSync(systemPromptPath, 'utf-8');
@@ -45,7 +111,12 @@ router.post('/', upload.array('pdfs', 10), async (req, res) => {
     if (req.query.debug === 'true') {
       return res.json({
         debug: true,
-        pdfFiles: pdfTexts.map(p => ({ filename: p.filename, chars: p.text.length })),
+        pdfFiles: processedTexts.map(p => ({
+          filename: p.filename,
+          originalChars: p.originalChars,
+          filteredChars: p.text.length,
+          reduced: p.text.length < p.originalChars,
+        })),
         totalChars: concatenatedText.length,
         estimatedTokens: Math.ceil(concatenatedText.length / 4),
         systemPrompt,

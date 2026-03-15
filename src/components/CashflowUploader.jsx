@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { getCashflows, updateCashflow, deleteCashflow, uploadCashflowsJson, uploadBondPdfs, listBondPdfs, deleteBondPdf, extractCashflowsAI, debugExtractAI } from '../api';
+import { getCashflows, updateCashflow, deleteCashflow, uploadCashflowsJson, uploadBondPdfs, listBondPdfs, deleteBondPdf } from '../api';
 import { generateCashflowDates } from '../utils/dateHelpers';
 
 export default function CashflowUploader({ bond }) {
@@ -13,8 +13,6 @@ export default function CashflowUploader({ bond }) {
   const [showPreloadMenu, setShowPreloadMenu] = useState(false);
   const [pdfFiles, setPdfFiles] = useState([]);
   const [uploadedPdfs, setUploadedPdfs] = useState([]);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiValidation, setAiValidation] = useState(null);
   const tableRef = useRef(null);
   const preloadRef = useRef(null);
   const pdfInputRef = useRef(null);
@@ -43,7 +41,6 @@ export default function CashflowUploader({ bond }) {
 
   useEffect(() => { load(); }, [bond]);
 
-  // Load uploaded PDFs list
   useEffect(() => {
     if (bond && bond.ticker) {
       listBondPdfs(bond.ticker).then(setUploadedPdfs).catch(() => setUploadedPdfs([]));
@@ -94,83 +91,6 @@ export default function CashflowUploader({ bond }) {
     }
   }
 
-  async function handleDebugExtract() {
-    if (uploadedPdfs.length === 0) {
-      alert('Primero subí al menos un PDF.');
-      return;
-    }
-    try {
-      const data = await debugExtractAI(bond.id);
-      console.log('[DEBUG AI Extract]', data);
-      const debugWindow = window.open('', '_blank');
-      if (debugWindow) {
-        debugWindow.document.write(`<html><head><title>Debug AI - ${bond.ticker}</title>
-          <style>body{font-family:monospace;padding:20px;background:#1e1e1e;color:#d4d4d4}
-          h2{color:#569cd6}h3{color:#4ec9b0;margin-top:24px}
-          pre{background:#2d2d2d;padding:12px;border-radius:6px;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
-          .stat{color:#dcdcaa}</style></head><body>`);
-        debugWindow.document.write(`<h2>Debug AI Extract — ${bond.ticker}</h2>`);
-        debugWindow.document.write(`<p class="stat">User message: ${data.userMessageChars} chars (~${data.estimatedTokens} tokens) | System prompt: ${data.systemPromptChars} chars</p>`);
-        debugWindow.document.write(`<h3>Bond Info</h3><pre>${JSON.stringify(data.bond, null, 2)}</pre>`);
-        debugWindow.document.write(`<h3>PDF Files</h3><pre>${JSON.stringify(data.pdfFiles, null, 2)}</pre>`);
-        debugWindow.document.write(`<h3>Existing Cashflows (${data.existingCashflows.length})</h3><pre>${JSON.stringify(data.existingCashflows, null, 2)}</pre>`);
-        for (const chunk of data.ragChunks) {
-          debugWindow.document.write(`<h3>RAG Text — ${chunk.filename} (${chunk.filteredChars} chars)</h3><pre>${chunk.text.replace(/</g, '&lt;')}</pre>`);
-        }
-        debugWindow.document.write(`<h3>Full User Message</h3><pre>${data.userMessage.replace(/</g, '&lt;')}</pre>`);
-        debugWindow.document.write('</body></html>');
-        debugWindow.document.close();
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Debug error: ' + err.message);
-    }
-  }
-
-  async function handleAiExtract() {
-    if (uploadedPdfs.length === 0) {
-      alert('Primero subí al menos un PDF.');
-      return;
-    }
-    setAiLoading(true);
-    setAiValidation(null);
-    try {
-      const result = await extractCashflowsAI(bond.id);
-      setAiValidation(result.validation);
-
-      if (result.cashflows && result.cashflows.length > 0) {
-        const baseSeq = lastSeq + newCashflows.length;
-        let currentResidual = lastResidual;
-        // Recalc residuals for the new rows that may already be loaded
-        for (const nc of newCashflows) {
-          currentResidual = +(currentResidual - (parseFloat(nc.amort) || 0)).toFixed(2);
-        }
-        const rows = result.cashflows.map((cf, i) => {
-          const amort = parseFloat(cf.amort) || 0;
-          currentResidual = +(currentResidual - amort).toFixed(2);
-          return {
-            tempId: `ai-${Date.now()}-${i}`,
-            seq: (baseSeq + i + 1).toString(),
-            date: cf.date,
-            rate: cf.rate.toString(),
-            amort: cf.amort.toString(),
-            residual: currentResidual.toString(),
-            amount: cf.amount.toString()
-          };
-        });
-        setNewCashflows(prev => [...prev, ...rows]);
-        setShowTable(true);
-      } else {
-        alert('La IA no pudo extraer cashflows de los PDFs.');
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Error en extracción IA: ' + err.message);
-    } finally {
-      setAiLoading(false);
-    }
-  }
-
   function handlePreload(stepMonths) {
     setShowPreloadMenu(false);
     if (!bond.issue_date || !bond.maturity) {
@@ -180,7 +100,6 @@ export default function CashflowUploader({ bond }) {
     const issueStr = typeof bond.issue_date === 'string' ? bond.issue_date.split('T')[0] : bond.issue_date;
     const maturityStr = typeof bond.maturity === 'string' ? bond.maturity.split('T')[0] : bond.maturity;
     const allDates = generateCashflowDates(issueStr, maturityStr, stepMonths);
-    // Filter: only keep dates after the last existing cashflow date
     let dates = allDates;
     if (cashflows.length > 0) {
       const lastExistingDate = cashflows[cashflows.length - 1].date.split('T')[0];
@@ -225,12 +144,8 @@ export default function CashflowUploader({ bond }) {
     setEditingRows(prev => {
       const newState = {
         ...prev,
-        [cfId]: {
-          ...prev[cfId],
-          [field]: value
-        }
+        [cfId]: { ...prev[cfId], [field]: value }
       };
-      // Real-time residual recalculation when amort changes
       if (field === 'amort') {
         const cfIndex = cashflows.findIndex(c => c.id === cfId);
         let prevResidual = 100;
@@ -265,7 +180,6 @@ export default function CashflowUploader({ bond }) {
       residual: parseFloat(editData.residual),
       amount: parseFloat(editData.amount)
     };
-
     try {
       await updateCashflow(bond.id, cfId, data);
       load();
@@ -288,13 +202,9 @@ export default function CashflowUploader({ bond }) {
       amount: ''
     };
     setNewCashflows(prev => [...prev, newRow]);
-    
-    // Scroll to the new row
     setTimeout(() => {
       const element = document.getElementById(`new-row-${tempId}`);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
+      if (element) element.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 0);
   };
 
@@ -303,7 +213,6 @@ export default function CashflowUploader({ bond }) {
       const updated = prev.map(row =>
         row.tempId === tempId ? { ...row, [field]: value } : row
       );
-      // Real-time residual recalculation when amort changes
       if (field === 'amort') {
         let currentResidual = lastResidual;
         for (let i = 0; i < updated.length; i++) {
@@ -318,7 +227,6 @@ export default function CashflowUploader({ bond }) {
 
   async function handleSaveAll() {
     if (newCashflows.length === 0) return;
-    // Pre-save validation
     const errors = [];
     let currentResidual = lastResidual;
     for (let i = 0; i < newCashflows.length; i++) {
@@ -341,7 +249,6 @@ export default function CashflowUploader({ bond }) {
         errors.push(`Fila ${rowNum}: fecha debe ser posterior a la fila anterior`);
       }
     }
-    // Check first new date is after last existing cashflow
     if (cashflows.length > 0 && newCashflows[0].date) {
       const lastExistingDate = cashflows[cashflows.length - 1].date.split('T')[0];
       if (newCashflows[0].date <= lastExistingDate) {
@@ -379,8 +286,7 @@ export default function CashflowUploader({ bond }) {
       load();
     } catch (err) {
       console.error('Delete error:', err);
-      const errorMsg = err.error || err.message || 'Unknown error';
-      alert('Delete failed: ' + errorMsg);
+      alert('Delete failed: ' + (err.error || err.message || 'Unknown error'));
     }
   }
 
@@ -389,9 +295,9 @@ export default function CashflowUploader({ bond }) {
   return (
     <div className="cashflow-container">
       <h4>Cashflows Management</h4>
-      
+
       <div className="cashflow-buttons">
-        <button 
+        <button
           className="btn"
           onClick={() => setShowTable(!showTable)}
         >
@@ -415,7 +321,7 @@ export default function CashflowUploader({ bond }) {
         </div>
       </div>
 
-      {/* PDF Upload & AI Extraction */}
+      {/* PDF management */}
       <div className="pdf-section">
         <div className="pdf-upload-row">
           <input
@@ -432,21 +338,6 @@ export default function CashflowUploader({ bond }) {
             disabled={pdfFiles.length === 0}
           >
             📄 Subir PDFs
-          </button>
-          <button
-            className="btn btn-ai"
-            onClick={handleAiExtract}
-            disabled={aiLoading || uploadedPdfs.length === 0}
-          >
-            {aiLoading ? '⏳ Extrayendo...' : '🤖 Extraer con IA'}
-          </button>
-          <button
-            className="btn btn-secondary btn-sm"
-            onClick={handleDebugExtract}
-            disabled={uploadedPdfs.length === 0}
-            title="Ver qué texto lee la IA (sin llamar a OpenAI)"
-          >
-            🔍 Debug
           </button>
         </div>
         {uploadedPdfs.length > 0 && (
@@ -470,25 +361,6 @@ export default function CashflowUploader({ bond }) {
                 </button>
               </span>
             ))}
-          </div>
-        )}
-        {aiValidation && (
-          <div className="ai-validation">
-            {aiValidation.warnings.length > 0 && (
-              <div className="ai-warnings">
-                ⚠️ {aiValidation.warnings.join(' | ')}
-              </div>
-            )}
-            {aiValidation.errors.length > 0 && (
-              <div className="ai-errors">
-                ❌ {aiValidation.errors.join(' | ')}
-              </div>
-            )}
-            <div className="ai-info">
-              PDFs usados: {aiValidation.pdfFilesUsed.join(', ')} · 
-              Amort nuevo: {aiValidation.totalNewAmort} · 
-              Amort existente: {aiValidation.totalExistingAmort}
-            </div>
           </div>
         )}
       </div>
@@ -515,98 +387,52 @@ export default function CashflowUploader({ bond }) {
                 {cashflows.map(c => {
                   const isEditing = editingRows[c.id];
                   const rowData = isEditing || {};
-                  
                   return (
                     <tr key={c.id} className={isEditing ? 'editing-row' : ''}>
                       <td>
-                        <input 
-                          type="number" 
-                          value={isEditing ? rowData.seq : c.seq}
+                        <input type="number" value={isEditing ? rowData.seq : c.seq}
                           onChange={(e) => handleEditChange(c.id, 'seq', e.target.value)}
-                          className="edit-input"
-                          readOnly={!isEditing}
-                        />
+                          className="edit-input" readOnly={!isEditing} />
                       </td>
                       <td>
-                        <input 
-                          type="date" 
+                        <input type="date"
                           value={isEditing ? (typeof rowData.date === 'string' ? rowData.date.split('T')[0] : rowData.date) : (typeof c.date === 'string' ? c.date.split('T')[0] : c.date)}
                           onChange={(e) => handleEditChange(c.id, 'date', e.target.value)}
-                          className="edit-input"
-                          readOnly={!isEditing}
-                          required
-                          autoFocus
-                        />
+                          className="edit-input" readOnly={!isEditing} required autoFocus />
                       </td>
                       <td>
-                        <input 
-                          type="number" 
-                          step="0.00001"
+                        <input type="number" step="0.00001"
                           value={isEditing ? rowData.rate : parseFloat(c.rate).toFixed(4)}
                           onChange={(e) => handleEditChange(c.id, 'rate', e.target.value)}
-                          className="edit-input"
-                          readOnly={!isEditing}
-                        />
+                          className="edit-input" readOnly={!isEditing} />
                       </td>
                       <td>
-                        <input 
-                          type="number" 
-                          step="0.01"
+                        <input type="number" step="0.01"
                           value={isEditing ? rowData.amort : parseFloat(c.amort).toFixed(2)}
                           onChange={(e) => handleEditChange(c.id, 'amort', e.target.value)}
-                          className="edit-input"
-                          readOnly={!isEditing}
-                        />
+                          className="edit-input" readOnly={!isEditing} />
                       </td>
                       <td>
-                        <input 
-                          type="number" 
-                          step="0.01"
+                        <input type="number" step="0.01"
                           value={isEditing ? rowData.residual : parseFloat(c.residual).toFixed(2)}
-                          readOnly
-                          className="edit-input"
-                        />
+                          readOnly className="edit-input" />
                       </td>
                       <td>
-                        <input 
-                          type="number" 
-                          step="0.01"
+                        <input type="number" step="0.01"
                           value={isEditing ? rowData.amount : parseFloat(c.amount).toFixed(2)}
                           onChange={(e) => handleEditChange(c.id, 'amount', e.target.value)}
-                          className="edit-input"
-                          readOnly={!isEditing}
-                        />
+                          className="edit-input" readOnly={!isEditing} />
                       </td>
                       <td className="table-actions">
                         {isEditing ? (
                           <>
-                            <button 
-                              className="btn btn-sm btn-success" 
-                              onClick={() => handleEditSave(c.id)}
-                            >
-                              Save
-                            </button>
-                            <button 
-                              className="btn btn-sm btn-secondary" 
-                              onClick={() => handleEditCancel(c.id)}
-                            >
-                              Cancel
-                            </button>
+                            <button className="btn btn-sm btn-success" onClick={() => handleEditSave(c.id)}>Save</button>
+                            <button className="btn btn-sm btn-secondary" onClick={() => handleEditCancel(c.id)}>Cancel</button>
                           </>
                         ) : (
                           <>
-                            <button 
-                              className="btn btn-sm btn-secondary" 
-                              onClick={() => handleEditStart(c.id)}
-                            >
-                              Edit
-                            </button>
-                            <button 
-                              className="btn btn-sm btn-danger" 
-                              onClick={() => handleDelete(c.id)}
-                            >
-                              Delete
-                            </button>
+                            <button className="btn btn-sm btn-secondary" onClick={() => handleEditStart(c.id)}>Edit</button>
+                            <button className="btn btn-sm btn-danger" onClick={() => handleDelete(c.id)}>Delete</button>
                           </>
                         )}
                       </td>
@@ -615,66 +441,30 @@ export default function CashflowUploader({ bond }) {
                 })}
                 {newCashflows.map(newRow => (
                   <tr key={newRow.tempId} id={`new-row-${newRow.tempId}`} className="editing-row">
+                    <td><input type="number" value={newRow.seq} className="edit-input" readOnly /></td>
                     <td>
-                      <input 
-                        type="number" 
-                        value={newRow.seq}
-                        className="edit-input"
-                        readOnly
-                      />
-                    </td>
-                    <td>
-                      <input 
-                        type="date" 
-                        value={newRow.date}
+                      <input type="date" value={newRow.date}
                         onChange={(e) => handleNewCashflowChange(newRow.tempId, 'date', e.target.value)}
-                        className="edit-input"
-                      />
+                        className="edit-input" />
                     </td>
                     <td>
-                      <input 
-                        type="number" 
-                        step="0.00001"
-                        value={newRow.rate}
+                      <input type="number" step="0.00001" value={newRow.rate}
                         onChange={(e) => handleNewCashflowChange(newRow.tempId, 'rate', e.target.value)}
-                        className="edit-input"
-                      />
+                        className="edit-input" />
                     </td>
                     <td>
-                      <input 
-                        type="number" 
-                        step="0.01"
-                        value={newRow.amort}
+                      <input type="number" step="0.01" value={newRow.amort}
                         onChange={(e) => handleNewCashflowChange(newRow.tempId, 'amort', e.target.value)}
-                        className="edit-input"
-                      />
+                        className="edit-input" />
                     </td>
+                    <td><input type="number" step="0.01" value={newRow.residual} className="edit-input" readOnly /></td>
                     <td>
-                      <input 
-                        type="number" 
-                        step="0.01"
-                        value={newRow.residual}
-                        className="edit-input"
-                        readOnly
-                      />
-                    </td>
-                    <td>
-                      <input 
-                        type="number" 
-                        step="0.01"
-                        value={newRow.amount}
+                      <input type="number" step="0.01" value={newRow.amount}
                         onChange={(e) => handleNewCashflowChange(newRow.tempId, 'amount', e.target.value)}
-                        className="edit-input"
-                      />
+                        className="edit-input" />
                     </td>
                     <td className="table-actions">
-                      <button 
-                        className="btn btn-sm btn-danger" 
-                        onClick={() => handleNewCashflowCancel(newRow.tempId)}
-                        title="Quitar fila"
-                      >
-                        ✕
-                      </button>
+                      <button className="btn btn-sm btn-danger" onClick={() => handleNewCashflowCancel(newRow.tempId)} title="Quitar fila">✕</button>
                     </td>
                   </tr>
                 ))}
@@ -691,11 +481,7 @@ export default function CashflowUploader({ bond }) {
               </div>
             )}
             <div className="cashflow-table-footer">
-              <button 
-                className="btn btn-secondary"
-                onClick={handleAddNewRow}
-                disabled={lastResidual <= 0}
-              >
+              <button className="btn btn-secondary" onClick={handleAddNewRow} disabled={lastResidual <= 0}>
                 ➕ Add New Cashflow
               </button>
               {lastResidual <= 0 && (

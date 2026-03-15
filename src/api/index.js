@@ -4,4 +4,4 @@ export { getBonds, createBond, updateBond, createBondWithCashflows } from './bon
 export { getCashflows, createCashflow, updateCashflow, deleteCashflow, uploadCashflowsJson } from './cashflows.js';
 export { uploadBondPdfs, listBondPdfs, deleteBondPdf } from './pdfs.js';
 export { getIndexes, getDayCountConventions } from './references.js';
-export { extractCashflowsAI, debugExtractAI, extractFromPdfs, extractFromPdfsDebug } from './extract.js';
+export { extractFromPdfs, extractFromPdfsDebug } from './extract.js';
