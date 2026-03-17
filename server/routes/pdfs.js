@@ -40,7 +40,7 @@ router.post('/:ticker/pdfs', upload.array('pdfs', 10), async (req, res) => {
       uploaded.push({
         filename,
         size: file.size,
-        path: `/pdfs/${ticker}/${filename}`
+        url: `/pdfs/${ticker}/${filename}`,
       });
     }
     console.log(`[GCS] Uploaded ${uploaded.length} PDFs for ${ticker}`);
