@@ -1,23 +1,26 @@
 Tu tarea es extraer el calendario de pagos (cashflows) de un bono leyendo TODO el contenido de los documentos PDF proporcionados.
 
 REGLAS IMPORTANTES:
- 1.⁠ ⁠Leé y analizá TODO el texto de los PDFs. Los datos de cashflows pueden estar en cualquier parte del documento (tablas, anexos, cronogramas, etc.).
- 2.⁠ ⁠Extraé las fechas, tasas, amortizaciones y montos EXACTAMENTE como figuran en los PDFs. NO inventes ni redondees datos.
- 3.⁠ ⁠Si el PDF contiene una tabla o cronograma de pagos explícito, usá esos datos exactos.
- 4.⁠ ⁠Solo inferí datos si el PDF describe la estructura pero no lista cada fecha individualmente (ej: "pagos semestrales del 5% desde 2025 hasta 2030").
- 5.⁠ ⁠Devolvé EXCLUSIVAMENTE un JSON válido. Sin texto adicional, sin markdown, sin explicaciones.
- 6.⁠ ⁠El JSON debe ser un objeto con DOS claves. La primera se llama: "principal", que contiene dos valores dentro: "issue_date" (fecha de emisión del bono), "maturity_date" (fecha de vencimiento, coincidente con el último pago del cronograma de pagos o chasflow). La segunda clave se llama "cashflows", que contiene un array de objetos con estos campos exactos:
-   - "date": string formato "YYYY-MM-DD"
-   - "rate": número entre 0 y 1 
-   - "amort": número 
-   - "amount": número 
- 7.⁠ ⁠Las fechas deben estar en orden cronológico ascendente.
- 8.⁠ ⁠La suma de todos los "amort" debe ser exactamente 100 (el bono se amortiza completamente).
- 9.⁠ ⁠NO incluyas cashflows con fechas que ya existan en los cashflows cargados.
-10.⁠ ⁠Si hay discrepancia entre los datos del bono proporcionados y los del PDF, priorizá los datos del PDF.
+ 1. Leé y analizá TODO el texto de los PDFs. Los datos de cashflows pueden estar en cualquier parte del documento (tablas, anexos, cronogramas, etc.).
+ 2. Extraé las fechas, tasas, amortizaciones y montos EXACTAMENTE como figuran en los PDFs. NO inventes ni redondees datos.
+ 3. Si el PDF contiene una tabla o cronograma de pagos explícito, usá esos datos exactos.
+ 4. Solo inferí datos si el PDF describe la estructura pero no lista cada fecha individualmente (ej: "pagos semestrales del 5% desde 2025 hasta 2030").
+ 5. Devolvé EXCLUSIVAMENTE un JSON válido. Sin texto adicional, sin markdown, sin explicaciones.
+ 6. El JSON debe tener TRES claves: "principal", "cashflows" y "error".
+    - "principal": objeto con "issue_date" (fecha de emisión) y "maturity_date" (fecha de vencimiento, coincidente con el último pago). Ambos en formato "YYYY-MM-DD" o null si no figuran.
+    - "cashflows": array de objetos con estos campos exactos:
+        - "date": string formato "YYYY-MM-DD"
+        - "rate": número entre 0 y 1
+        - "amort": número
+        - "amount": número
+    - "error": string con mensaje de error, o null si la extracción fue exitosa.
+ 7. Las fechas deben estar en orden cronológico ascendente.
+ 8. La suma de todos los "amort" debe ser exactamente 100 (el bono se amortiza completamente).
+ 9. NO incluyas cashflows con fechas que ya existan en los cashflows cargados.
+10. Si hay discrepancia entre los datos del bono proporcionados y los del PDF, priorizá los datos del PDF.
 
-Ejemplo de formato de respuesta:
-{"issue_date": "2024-12-30", "maturity_date": "2025-12-15", "cashflows": [{"date": "2025-06-15", "rate": 0.05, "amort": 10, "amount": 150}, {"date": "2025-12-15", "rate": 0.05, "amort": 10, "amount": 150}]}
+Ejemplo de respuesta exitosa:
+{"principal": {"issue_date": "2024-12-30", "maturity_date": "2025-12-15"}, "cashflows": [{"date": "2025-06-15", "rate": 0.05, "amort": 10, "amount": 150}, {"date": "2025-12-15", "rate": 0.05, "amort": 10, "amount": 150}], "error": null}
 
-SOLO si los PDFs no contienen absolutamente ningún dato sobre pagos, fechas o estructura del bono, devolvé:
-{"error": "Información insuficiente en los PDFs para extraer cashflows"}
+SOLO si los PDFs no contienen absolutamente ningún dato sobre pagos, fechas o estructura del bono:
+{"principal": {"issue_date": null, "maturity_date": null}, "cashflows": [], "error": "Información insuficiente en los PDFs para extraer cashflows"}

@@ -131,10 +131,49 @@ router.post('/', upload.array('pdfs', 10), async (req, res) => {
         { role: 'user', content: concatenatedText },
       ],
       max_completion_tokens: 16000,
-      response_format: { type: 'json_object' },
+      seed: 42,
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'cashflow_extraction',
+          strict: true,
+          schema: {
+            type: 'object',
+            properties: {
+              principal: {
+                type: 'object',
+                properties: {
+                  issue_date:    { type: ['string', 'null'] },
+                  maturity_date: { type: ['string', 'null'] },
+                },
+                required: ['issue_date', 'maturity_date'],
+                additionalProperties: false,
+              },
+              cashflows: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    date:   { type: 'string' },
+                    rate:   { type: 'number' },
+                    amort:  { type: 'number' },
+                    amount: { type: 'number' },
+                  },
+                  required: ['date', 'rate', 'amort', 'amount'],
+                  additionalProperties: false,
+                },
+              },
+              error: { type: ['string', 'null'] },
+            },
+            required: ['principal', 'cashflows', 'error'],
+            additionalProperties: false,
+          },
+        },
+      },
     });
 
     const raw = completion.choices[0].message.content;
+    console.log(`[ExtractFromPdfs] system_fingerprint: ${completion.system_fingerprint}`);
     console.log(`[ExtractFromPdfs] Respuesta OpenAI (${raw.length} chars):\n${raw.substring(0, 1000)}`);
 
     let parsed;
