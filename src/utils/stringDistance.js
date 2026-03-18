@@ -36,23 +36,22 @@ export function damerauLevenshteinOSA(a, b) {
   if (n === 0) return m;
   if (m === 0) return n;
 
-  let prev2 = new Int32Array(m + 1);            // row i-2
-  let prev1 = new Int32Array(m + 1);            // row i-1
+  let prev2 = new Int32Array(m + 1);
+  let prev1 = new Int32Array(m + 1);
   for (let j = 0; j <= m; j++) prev1[j] = j;
 
-  let curr = new Int32Array(m + 1);             // row i
+  let curr = new Int32Array(m + 1);
   for (let i = 1; i <= n; i++) {
     curr[0] = i;
     const ai = a.charCodeAt(i - 1);
     for (let j = 1; j <= m; j++) {
       const cost = ai === b.charCodeAt(j - 1) ? 0 : 1;
-      let v = prev1[j - 1] + cost;              // sustitución/match
-      const ins = curr[j - 1] + 1;              // inserción
+      let v = prev1[j - 1] + cost;
+      const ins = curr[j - 1] + 1;
       if (ins < v) v = ins;
-      const del = prev1[j] + 1;                 // borrado
+      const del = prev1[j] + 1;
       if (del < v) v = del;
 
-      // transposición adyacente: a[i-1]==b[j-2] && a[i-2]==b[j-1]
       if (i > 1 && j > 1 &&
           ai === b.charCodeAt(j - 2) &&
           a.charCodeAt(i - 2) === b.charCodeAt(j - 1)) {

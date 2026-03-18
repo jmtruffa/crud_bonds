@@ -1,87 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import CashflowUploader from './CashflowUploader';
-import { damerauLevenshteinOSA } from '../levenshteinDist';
+import BondReadOnlyRow from './BondReadOnlyRow';
+import BondEditableRow from './BondEditableRow';
+import CreateBondModal from './CreateBondModal';
+import { damerauLevenshteinOSA } from '../utils/stringDistance';
 import { getIndexes, getDayCountConventions } from '../api';
-
-function ReadOnlyRow({ bond, onEdit, onClone, onToggleCashflows, isExpanded }) {
-  const fmtDate = (d) => (typeof d === 'string' ? d.split('T')[0] : d) || '';
-  return (
-    <tr>
-      <td>
-        <button className="expand-toggle" onClick={onToggleCashflows} title="Toggle cashflows">
-          {isExpanded ? '▼' : '▶'}
-        </button>
-      </td>
-      <td><strong>{bond.ticker}</strong></td>
-      <td>{fmtDate(bond.issue_date)}</td>
-      <td>{fmtDate(bond.maturity)}</td>
-      <td>{bond.coupon}</td>
-      <td>{bond.index_code || '—'}</td>
-      <td>{bond.offset_days}</td>
-      <td>{bond.day_count_conv || '—'}</td>
-      <td>
-        <span className={`status-badge ${bond.active !== false ? 'active' : 'inactive'}`}>
-          {bond.active !== false ? 'Yes' : 'No'}
-        </span>
-      </td>
-      <td>
-        <div className="table-action-group">
-          <button className="btn btn-sm btn-secondary" onClick={onEdit}>Edit</button>
-          <button className="btn btn-sm btn-success" onClick={onClone}>Clone</button>
-        </div>
-      </td>
-    </tr>
-  );
-}
-
-function EditableRow({ data, onChange, onSave, onCancel, indexOptions, conventionOptions }) {
-  return (
-    <tr className="editing-row">
-      <td></td>
-      <td>
-        <input className="cell-input" value={data.ticker} onChange={e => onChange('ticker', e.target.value)} autoFocus required />
-      </td>
-      <td>
-        <input className="cell-input" type="date" value={data.issue_date} onChange={e => onChange('issue_date', e.target.value)} required />
-      </td>
-      <td>
-        <input className="cell-input" type="date" value={data.maturity} onChange={e => onChange('maturity', e.target.value)} required />
-      </td>
-      <td>
-        <input className="cell-input" type="number" min="0" max="1" step="0.00001" value={data.coupon} onChange={e => onChange('coupon', e.target.value)} />
-      </td>
-      <td>
-        <select className="cell-select" value={data.index_code} onChange={e => onChange('index_code', e.target.value)}>
-          <option value="">None</option>
-          {indexOptions.map(opt => {
-            const val = typeof opt === 'string' ? opt : (opt.code ?? '');
-            return <option key={val} value={val}>{val}</option>;
-          })}
-        </select>
-      </td>
-      <td>
-        <input className="cell-input" type="number" max="0" step="1" value={data.offset_days} onChange={e => onChange('offset_days', e.target.value)} />
-      </td>
-      <td>
-        <select className="cell-select" value={data.day_count_conv_id} onChange={e => onChange('day_count_conv_id', e.target.value)} required>
-          <option value="">Select</option>
-          {conventionOptions.map(opt => (
-            <option key={opt.id} value={opt.id}>{opt.code}</option>
-          ))}
-        </select>
-      </td>
-      <td style={{ textAlign: 'center' }}>
-        <input type="checkbox" checked={data.active !== false && data.active !== 'false'} onChange={e => onChange('active', e.target.checked)} />
-      </td>
-      <td>
-        <div className="table-action-group">
-          <button className="btn btn-sm btn-success" onClick={onSave}>Save</button>
-          <button className="btn btn-sm btn-secondary" onClick={onCancel}>Cancel</button>
-        </div>
-      </td>
-    </tr>
-  );
-}
 
 export default function BondList({ bonds, onSave, onRefresh }) {
   const [searchTicker, setSearchTicker] = useState('');
@@ -96,6 +19,7 @@ export default function BondList({ bonds, onSave, onRefresh }) {
 
   const [indexOptions, setIndexOptions] = useState([]);
   const [conventionOptions, setConventionOptions] = useState([]);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   useEffect(() => {
     Promise.all([getIndexes(), getDayCountConventions()])
@@ -240,6 +164,9 @@ export default function BondList({ bonds, onSave, onRefresh }) {
           <button className="btn btn-success" onClick={startNew} disabled={editingId !== null}>
             + New Bond
           </button>
+          <button className="btn btn-primary" onClick={() => setShowCreateModal(true)} disabled={editingId !== null}>
+            + Create from PDF
+          </button>
         </div>
       </div>
 
@@ -261,7 +188,7 @@ export default function BondList({ bonds, onSave, onRefresh }) {
           </thead>
           <tbody>
             {editingId === 'new' && (
-              <EditableRow
+              <BondEditableRow
                 data={editData}
                 onChange={handleFieldChange}
                 onSave={saveEdit}
@@ -274,7 +201,7 @@ export default function BondList({ bonds, onSave, onRefresh }) {
               paginatedBonds.map(b => (
                 <React.Fragment key={b.id}>
                   {editingId === b.id ? (
-                    <EditableRow
+                    <BondEditableRow
                       data={editData}
                       onChange={handleFieldChange}
                       onSave={saveEdit}
@@ -283,7 +210,7 @@ export default function BondList({ bonds, onSave, onRefresh }) {
                       conventionOptions={conventionOptions}
                     />
                   ) : (
-                    <ReadOnlyRow
+                    <BondReadOnlyRow
                       bond={b}
                       onEdit={() => startEdit(b)}
                       onClone={() => startClone(b)}
@@ -331,6 +258,14 @@ export default function BondList({ bonds, onSave, onRefresh }) {
             Next →
           </button>
         </div>
+      )}
+      {showCreateModal && (
+        <CreateBondModal
+          indexOptions={indexOptions}
+          conventionOptions={conventionOptions}
+          onSuccess={() => { setShowCreateModal(false); onRefresh(); }}
+          onClose={() => setShowCreateModal(false)}
+        />
       )}
     </div>
   );
