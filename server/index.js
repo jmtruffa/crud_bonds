@@ -30,6 +30,9 @@ console.log(`   JWT_SECRET: ${JWT_SECRET === 'dev-secret-change-in-production' ?
 printGcsConfig();
 printOpenaiConfig();
 
+// SPA static files (must be before protected routes to avoid auth blocking index.html)
+app.use(express.static(path.join(__dirname, '..', 'dist')));
+
 // Public routes
 app.use('/auth', authRoutes);
 app.use('/pdfs', publicPdfsRoutes);
@@ -42,8 +45,7 @@ app.use('/', authMiddleware, referencesRoutes);
 app.use('/admin', authMiddleware, adminRoutes);
 app.use('/extract-from-pdfs', authMiddleware, extractFromPdfsRoutes);
 
-// SPA static files
-app.use(express.static(path.join(__dirname, '..', 'dist')));
+// SPA fallback
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'dist', 'index.html'));
 });
