@@ -42,6 +42,21 @@ router.get('/lecaps', async (req, res) => {
   }
 });
 
+// List TAMAR
+router.get('/tamar', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT ticker, date_liq, date_vto, tasa
+       FROM tamar
+       ORDER BY date_vto DESC, ticker ASC`
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    sendError(res, err, 'No se pudieron listar los TAMAR', 500);
+  }
+});
+
 // Create bond with cashflows (atomic transaction)
 router.post('/with-cashflows', async (req, res) => {
   const { bond: bondData, cashflows: cashflowRows } = req.body;
@@ -239,6 +254,56 @@ router.post('/lecaps', async (req, res) => {
     await client.query('ROLLBACK').catch(() => {});
     console.error('Error creating lecap:', err);
     sendError(res, err, 'No se pudo crear la LECAP', 400);
+  } finally {
+    client.release();
+  }
+});
+
+// Create TAMAR and vencTitulos entry (atomic transaction)
+router.post('/tamar', async (req, res) => {
+  const ticker = req.body.ticker ? req.body.ticker.toUpperCase().trim() : '';
+  const { date_liq, date_vto } = req.body;
+  const tasa = Number(req.body.tasa);
+
+  if (!ticker || !date_liq || !date_vto) {
+    return res.status(400).json({ error: 'Campos requeridos: ticker, date_liq, date_vto' });
+  }
+  if (Number.isNaN(tasa)) {
+    return res.status(400).json({ error: 'Campo invalido: tasa debe ser numerico' });
+  }
+
+  const liqDate = new Date(date_liq);
+  const vtoDate = new Date(date_vto);
+  if (Number.isNaN(liqDate.getTime()) || Number.isNaN(vtoDate.getTime())) {
+    return res.status(400).json({ error: 'Fechas invalidas: date_liq y date_vto deben tener formato valido' });
+  }
+  if (vtoDate <= liqDate) {
+    return res.status(400).json({ error: 'date_vto debe ser posterior a date_liq' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const tamarInsert = await client.query(
+      `INSERT INTO tamar (ticker, date_liq, date_vto, tasa)
+       VALUES ($1, $2, $3, $4)
+       RETURNING ticker, date_liq, date_vto, tasa`,
+      [ticker, date_liq, date_vto, tasa]
+    );
+
+    await client.query(
+      `INSERT INTO "vencTitulos" (ticker, vto)
+       VALUES ($1, $2)`,
+      [ticker, date_vto]
+    );
+
+    await client.query('COMMIT');
+    res.status(201).json(tamarInsert.rows[0]);
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('Error creating tamar:', err);
+    sendError(res, err, 'No se pudo crear el TAMAR', 400);
   } finally {
     client.release();
   }

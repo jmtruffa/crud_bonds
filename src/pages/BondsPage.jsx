@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getBonds, createBond, createLecap, updateBond, setToken } from '../api';
+import { getBonds, createBond, createLecap, createTamar, updateBond, setToken } from '../api';
 import BondList from '../components/BondList';
 import LecapsCreateForm from '../components/LecapsCreateForm';
+import TamarCreateForm from '../components/TamarCreateForm';
 
 export default function BondsPage() {
   const [bonds, setBonds] = useState([]);
@@ -41,6 +42,10 @@ export default function BondsPage() {
     await createLecap(lecapData);
   }
 
+  async function handleCreateTamar(tamarData) {
+    await createTamar(tamarData);
+  }
+
   return (
     <div className="app-container">
       <header>
@@ -61,13 +66,21 @@ export default function BondsPage() {
           >
             LECAPS
           </button>
+          <button
+            className={`btn ${activeTab === 'tamar' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setActiveTab('tamar')}
+          >
+            TAMAR
+          </button>
         </div>
         {activeTab === 'bonds' ? (
           loading ? <div className="loading">Loading bonds...</div> : (
             <BondList bonds={bonds} onSave={handleSave} onRefresh={load} />
           )
-        ) : (
+        ) : activeTab === 'lecaps' ? (
           <LecapsCreateForm onCreate={handleCreateLecap} />
+        ) : (
+          <TamarCreateForm onCreate={handleCreateTamar} />
         )}
       </main>
     </div>
