@@ -1,11 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getBonds, createBond, updateBond, setToken } from '../api';
+import { getBonds, createBond, createLecap, updateBond, setToken } from '../api';
 import BondList from '../components/BondList';
+import LecapsCreateForm from '../components/LecapsCreateForm';
 
 export default function BondsPage() {
   const [bonds, setBonds] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('bonds');
   const navigate = useNavigate();
 
   const load = useCallback(async () => {
@@ -35,6 +37,10 @@ export default function BondsPage() {
     load();
   }
 
+  async function handleCreateLecap(lecapData) {
+    await createLecap(lecapData);
+  }
+
   return (
     <div className="app-container">
       <header>
@@ -42,8 +48,26 @@ export default function BondsPage() {
         <button className="btn btn-secondary" onClick={handleLogout}>Logout</button>
       </header>
       <main>
-        {loading ? <div className="loading">Loading bonds...</div> : (
-          <BondList bonds={bonds} onSave={handleSave} onRefresh={load} />
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+          <button
+            className={`btn ${activeTab === 'bonds' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setActiveTab('bonds')}
+          >
+            Bonds
+          </button>
+          <button
+            className={`btn ${activeTab === 'lecaps' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setActiveTab('lecaps')}
+          >
+            LECAPS
+          </button>
+        </div>
+        {activeTab === 'bonds' ? (
+          loading ? <div className="loading">Loading bonds...</div> : (
+            <BondList bonds={bonds} onSave={handleSave} onRefresh={load} />
+          )
+        ) : (
+          <LecapsCreateForm onCreate={handleCreateLecap} />
         )}
       </main>
     </div>

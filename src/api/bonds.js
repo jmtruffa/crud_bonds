@@ -10,3 +10,6 @@ export const updateBond = (id, b) =>
 
 export const createBondWithCashflows = (bond, cashflows) =>
   request('/bonds/with-cashflows', { method: 'POST', body: JSON.stringify({ bond, cashflows }) });
+
+export const createLecap = (lecap) =>
+  request('/bonds/lecaps', { method: 'POST', body: JSON.stringify(lecap) });
