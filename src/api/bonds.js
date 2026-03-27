@@ -1,6 +1,7 @@
 import { request } from './client.js';
 
 export const getBonds = () => request('/bonds');
+export const getLecaps = () => request('/bonds/lecaps');
 
 export const createBond = (b) =>
   request('/bonds', { method: 'POST', body: JSON.stringify(b) });

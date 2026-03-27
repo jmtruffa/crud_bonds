@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { getLecaps } from '../api';
 
 const initialForm = {
   ticker: '',
@@ -11,6 +12,24 @@ const initialForm = {
 export default function LecapsCreateForm({ onCreate }) {
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
+  const [lecaps, setLecaps] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  async function loadLecaps() {
+    setLoading(true);
+    try {
+      const rows = await getLecaps();
+      setLecaps(rows || []);
+    } catch (err) {
+      alert('No se pudo cargar el listado de LECAPS: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadLecaps();
+  }, []);
 
   function updateField(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -44,6 +63,7 @@ export default function LecapsCreateForm({ onCreate }) {
       await onCreate(payload);
       alert(`LECAP ${payload.ticker} creada correctamente`);
       setForm(initialForm);
+      await loadLecaps();
     } catch (err) {
       alert('No se pudo crear la LECAP: ' + err.message);
     } finally {
@@ -56,65 +76,104 @@ export default function LecapsCreateForm({ onCreate }) {
       <div className="table-toolbar">
         <h2 style={{ margin: 0 }}>Alta de LECAPS</h2>
       </div>
-      <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '12px', maxWidth: '560px' }}>
-        <label>
-          Ticker
-          <input
-            type="text"
-            value={form.ticker}
-            onChange={(e) => updateField('ticker', e.target.value.toUpperCase())}
-            className="search-input"
-            required
-          />
-        </label>
-        <label>
-          Fecha liquidacion (date_liq)
-          <input
-            type="date"
-            value={form.date_liq}
-            onChange={(e) => updateField('date_liq', e.target.value)}
-            className="search-input"
-            required
-          />
-        </label>
-        <label>
-          Fecha vencimiento (date_vto)
-          <input
-            type="date"
-            value={form.date_vto}
-            onChange={(e) => updateField('date_vto', e.target.value)}
-            className="search-input"
-            required
-          />
-        </label>
-        <label>
-          Tasa
-          <input
-            type="number"
-            step="any"
-            value={form.tasa}
-            onChange={(e) => updateField('tasa', e.target.value)}
-            className="search-input"
-            required
-          />
-        </label>
-        <label>
-          Valor final (vf)
-          <input
-            type="number"
-            step="any"
-            value={form.vf}
-            onChange={(e) => updateField('vf', e.target.value)}
-            className="search-input"
-            required
-          />
-        </label>
-        <div>
+      <form onSubmit={handleSubmit} className="lecaps-form">
+        <div className="lecaps-form-row">
+          <label className="lecaps-field">
+            Ticker
+            <input
+              type="text"
+              value={form.ticker}
+              onChange={(e) => updateField('ticker', e.target.value.toUpperCase())}
+              className="search-input"
+              required
+            />
+          </label>
+          <label className="lecaps-field">
+            Fecha liquidacion (date_liq)
+            <input
+              type="date"
+              value={form.date_liq}
+              onChange={(e) => updateField('date_liq', e.target.value)}
+              className="search-input"
+              required
+            />
+          </label>
+          <label className="lecaps-field">
+            Fecha vencimiento (date_vto)
+            <input
+              type="date"
+              value={form.date_vto}
+              onChange={(e) => updateField('date_vto', e.target.value)}
+              className="search-input"
+              required
+            />
+          </label>
+        </div>
+        <div className="lecaps-form-row lecap-row-second">
+          <label className="lecaps-field">
+            Tasa
+            <input
+              type="number"
+              step="any"
+              value={form.tasa}
+              onChange={(e) => updateField('tasa', e.target.value)}
+              className="search-input"
+              required
+            />
+          </label>
+          <label className="lecaps-field">
+            Valor final (vf)
+            <input
+              type="number"
+              step="any"
+              value={form.vf}
+              onChange={(e) => updateField('vf', e.target.value)}
+              className="search-input"
+              required
+            />
+          </label>
+        </div>
+        <div className="lecaps-actions">
           <button type="submit" className="btn btn-success" disabled={saving}>
             {saving ? 'Guardando...' : 'Guardar LECAP'}
           </button>
         </div>
       </form>
+
+      <div className="table-scroll-wrapper">
+        <table className="table bond-table">
+          <thead>
+            <tr>
+              <th>Ticker</th>
+              <th>Fecha liqui.</th>
+              <th>Fecha vto.</th>
+              <th>Tasa</th>
+              <th>Valor final</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan={5} className="no-results">Cargando LECAPS...</td>
+              </tr>
+            ) : lecaps.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="no-results">No hay LECAPS cargadas</td>
+              </tr>
+            ) : (
+              lecaps.map((row, idx) => (
+                <tr key={`${row.ticker}-${row.date_vto}-${idx}`}>
+                  <td>{row.ticker}</td>
+                  <td>{String(row.date_liq).split('T')[0]}</td>
+                  <td>{String(row.date_vto).split('T')[0]}</td>
+                  <td>{row.tasa}</td>
+                  <td>{row.vf}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

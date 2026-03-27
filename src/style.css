@@ -798,3 +798,43 @@ h1 {
   background: #fff;
   box-sizing: border-box;
 }
+
+/* LECAPS */
+.lecaps-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lecaps-form-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.lecap-row-second {
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  max-width: 66%;
+}
+
+.lecaps-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: #555;
+  font-weight: 600;
+}
+
+.lecaps-actions {
+  display: flex;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .lecaps-form-row,
+  .lecap-row-second {
+    grid-template-columns: 1fr;
+    max-width: 100%;
+  }
+}

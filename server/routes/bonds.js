@@ -27,6 +27,21 @@ router.get('/', async (req, res) => {
   }
 });
 
+// List LECAPS
+router.get('/lecaps', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT ticker, date_liq, date_vto, tasa, vf
+       FROM lecaps
+       ORDER BY date_vto DESC, ticker ASC`
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    sendError(res, err, 'No se pudieron listar las LECAPS', 500);
+  }
+});
+
 // Create bond with cashflows (atomic transaction)
 router.post('/with-cashflows', async (req, res) => {
   const { bond: bondData, cashflows: cashflowRows } = req.body;
