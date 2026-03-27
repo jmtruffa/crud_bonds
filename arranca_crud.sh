@@ -2,6 +2,7 @@
 
 PORT=4000
 SERVER_DIR="$HOME/dev/crud_bonds/server"
+APP_DIR="$HOME/dev/crud_bonds"
 
 get_local_ip() {
   if command -v ip >/dev/null 2>&1; then
@@ -53,6 +54,10 @@ is_port_in_use() {
 if is_port_in_use; then
   echo "El puerto $PORT ya esta en uso. No se inicia una nueva instancia."
 else
+  echo "Compilando frontend..."
+  cd "$APP_DIR" || exit 1
+  npm run build || { echo "Fallo la compilacion del frontend"; exit 1; }
+
   cd "$SERVER_DIR" || exit 1
   npm start &
 fi
