@@ -14,6 +14,7 @@ export default function LecapsCreateForm({ onCreate }) {
   const [saving, setSaving] = useState(false);
   const [lecaps, setLecaps] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTicker, setSearchTicker] = useState('');
 
   async function loadLecaps() {
     setLoading(true);
@@ -34,6 +35,11 @@ export default function LecapsCreateForm({ onCreate }) {
   function updateField(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
+
+  const filteredLecaps = lecaps.filter((row) => {
+    if (!searchTicker.trim()) return true;
+    return (row.ticker || '').toLowerCase().includes(searchTicker.trim().toLowerCase());
+  });
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -140,6 +146,19 @@ export default function LecapsCreateForm({ onCreate }) {
         </div>
       </form>
 
+      <div className="search-bar">
+        <input
+          type="text"
+          placeholder="Buscar LECAP por ticker..."
+          value={searchTicker}
+          onChange={(e) => setSearchTicker(e.target.value)}
+          className="search-input"
+        />
+        <span className="search-count">
+          {filteredLecaps.length} lecaps
+        </span>
+      </div>
+
       <div className="table-scroll-wrapper">
         <table className="table bond-table">
           <thead>
@@ -156,12 +175,12 @@ export default function LecapsCreateForm({ onCreate }) {
               <tr>
                 <td colSpan={5} className="no-results">Cargando LECAPS...</td>
               </tr>
-            ) : lecaps.length === 0 ? (
+            ) : filteredLecaps.length === 0 ? (
               <tr>
-                <td colSpan={5} className="no-results">No hay LECAPS cargadas</td>
+                <td colSpan={5} className="no-results">No hay LECAPS para ese filtro</td>
               </tr>
             ) : (
-              lecaps.map((row, idx) => (
+              filteredLecaps.map((row, idx) => (
                 <tr key={`${row.ticker}-${row.date_vto}-${idx}`}>
                   <td>{row.ticker}</td>
                   <td>{String(row.date_liq).split('T')[0]}</td>

@@ -13,6 +13,7 @@ export default function TamarCreateForm({ onCreate }) {
   const [saving, setSaving] = useState(false);
   const [tamars, setTamars] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTicker, setSearchTicker] = useState('');
 
   async function loadTamars() {
     setLoading(true);
@@ -33,6 +34,11 @@ export default function TamarCreateForm({ onCreate }) {
   function updateField(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
+
+  const filteredTamars = tamars.filter((row) => {
+    if (!searchTicker.trim()) return true;
+    return (row.ticker || '').toLowerCase().includes(searchTicker.trim().toLowerCase());
+  });
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -127,6 +133,19 @@ export default function TamarCreateForm({ onCreate }) {
         </div>
       </form>
 
+      <div className="search-bar">
+        <input
+          type="text"
+          placeholder="Buscar TAMAR por ticker..."
+          value={searchTicker}
+          onChange={(e) => setSearchTicker(e.target.value)}
+          className="search-input"
+        />
+        <span className="search-count">
+          {filteredTamars.length} tamar
+        </span>
+      </div>
+
       <div className="table-scroll-wrapper">
         <table className="table bond-table">
           <thead>
@@ -142,12 +161,12 @@ export default function TamarCreateForm({ onCreate }) {
               <tr>
                 <td colSpan={4} className="no-results">Cargando TAMAR...</td>
               </tr>
-            ) : tamars.length === 0 ? (
+            ) : filteredTamars.length === 0 ? (
               <tr>
-                <td colSpan={4} className="no-results">No hay TAMAR cargadas</td>
+                <td colSpan={4} className="no-results">No hay TAMAR para ese filtro</td>
               </tr>
             ) : (
-              tamars.map((row, idx) => (
+              filteredTamars.map((row, idx) => (
                 <tr key={`${row.ticker}-${row.date_vto}-${idx}`}>
                   <td>{row.ticker}</td>
                   <td>{String(row.date_liq).split('T')[0]}</td>
