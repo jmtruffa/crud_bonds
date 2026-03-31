@@ -1,16 +1,11 @@
-const CALC_BASE = 'http://localhost:8080';
+import { request } from './client.js';
 
 export async function calcYield({ ticker, settlementDate, price, initialFee, endingFee, extendIndex }) {
   const params = new URLSearchParams({ ticker, settlementDate, price });
   if (initialFee != null && initialFee !== '') params.set('initialFee', initialFee);
   if (endingFee != null && endingFee !== '') params.set('endingFee', endingFee);
   if (extendIndex != null && extendIndex !== '') params.set('extendIndex', extendIndex);
-  const res = await fetch(`${CALC_BASE}/yield?${params}`);
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || `HTTP ${res.status}`);
-  }
-  return res.json();
+  return request(`/calc/yield?${params}`, { method: 'GET' });
 }
 
 export async function calcPrice({ ticker, settlementDate, rate, initialFee, endingFee, extendIndex }) {
@@ -18,10 +13,5 @@ export async function calcPrice({ ticker, settlementDate, rate, initialFee, endi
   if (initialFee != null && initialFee !== '') params.set('initialFee', initialFee);
   if (endingFee != null && endingFee !== '') params.set('endingFee', endingFee);
   if (extendIndex != null && extendIndex !== '') params.set('extendIndex', extendIndex);
-  const res = await fetch(`${CALC_BASE}/price?${params}`);
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || `HTTP ${res.status}`);
-  }
-  return res.json();
+  return request(`/calc/price?${params}`, { method: 'GET' });
 }

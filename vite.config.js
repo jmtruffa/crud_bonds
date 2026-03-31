@@ -12,6 +12,7 @@ export default defineConfig({
       '/auth': 'http://localhost:4000',
       '/admin': 'http://localhost:4000',
       '/pdfs': 'http://localhost:4000',
+      '/calc': 'http://localhost:4000',
     },
   },
 });
