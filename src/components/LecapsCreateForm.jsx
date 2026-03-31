@@ -50,7 +50,7 @@ export default function LecapsCreateForm({ onCreate }) {
       ticker: form.ticker.trim().toUpperCase(),
       date_liq: form.date_liq,
       date_vto: form.date_vto,
-      tasa: Number(form.tasa),
+      tasa: Number(form.tasa) / 100,
       vf: Number(form.vf),
     };
 
@@ -145,7 +145,7 @@ export default function LecapsCreateForm({ onCreate }) {
           </div>
           <div className="lecaps-form-row lecap-row-second">
             <label className="lecaps-field">
-              Tasa
+              Tasa (%)
               <input
                 type="number"
                 step="any"
@@ -182,7 +182,7 @@ export default function LecapsCreateForm({ onCreate }) {
               <th>Ticker</th>
               <th>Fecha liqui.</th>
               <th>Fecha vto.</th>
-              <th>Tasa</th>
+              <th>Tasa (%)</th>
               <th>Valor final</th>
               <th style={{ width: '60px' }}>Actions</th>
             </tr>
@@ -202,7 +202,7 @@ export default function LecapsCreateForm({ onCreate }) {
                   <td><strong>{row.ticker}</strong></td>
                   <td>{fmtDate(row.date_liq)}</td>
                   <td>{fmtDate(row.date_vto)}</td>
-                  <td>{row.tasa}</td>
+                  <td>{(Number(row.tasa) * 100).toFixed(2)}%</td>
                   <td>{row.vf}</td>
                   <td>
                     <button className="btn btn-sm btn-calc" onClick={() => setCalcLecap(row)}>Calc</button>
