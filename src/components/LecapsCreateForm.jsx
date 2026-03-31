@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getLecaps } from '../api';
+import LecapCalcModal from './LecapCalcModal';
 
 const initialForm = {
   ticker: '',
@@ -10,11 +11,13 @@ const initialForm = {
 };
 
 export default function LecapsCreateForm({ onCreate }) {
+  const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
   const [lecaps, setLecaps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTicker, setSearchTicker] = useState('');
+  const [calcLecap, setCalcLecap] = useState(null);
 
   async function loadLecaps() {
     setLoading(true);
@@ -69,6 +72,7 @@ export default function LecapsCreateForm({ onCreate }) {
       await onCreate(payload);
       alert(`LECAP ${payload.ticker} creada correctamente`);
       setForm(initialForm);
+      setShowForm(false);
       await loadLecaps();
     } catch (err) {
       alert('No se pudo crear la LECAP: ' + err.message);
@@ -77,87 +81,99 @@ export default function LecapsCreateForm({ onCreate }) {
     }
   }
 
+  const fmtDate = (d) => (typeof d === 'string' ? d.split('T')[0] : d) || '';
+
   return (
     <div className="bond-list-container">
       <div className="table-toolbar">
-        <h2 style={{ margin: 0 }}>Alta de LECAPS</h2>
-      </div>
-      <form onSubmit={handleSubmit} className="lecaps-form">
-        <div className="lecaps-form-row">
-          <label className="lecaps-field">
-            Ticker
-            <input
-              type="text"
-              value={form.ticker}
-              onChange={(e) => updateField('ticker', e.target.value.toUpperCase())}
-              className="search-input"
-              required
-            />
-          </label>
-          <label className="lecaps-field">
-            Fecha liquidacion (date_liq)
-            <input
-              type="date"
-              value={form.date_liq}
-              onChange={(e) => updateField('date_liq', e.target.value)}
-              className="search-input"
-              required
-            />
-          </label>
-          <label className="lecaps-field">
-            Fecha vencimiento (date_vto)
-            <input
-              type="date"
-              value={form.date_vto}
-              onChange={(e) => updateField('date_vto', e.target.value)}
-              className="search-input"
-              required
-            />
-          </label>
+        <div className="search-bar">
+          <input
+            type="text"
+            placeholder="Buscar LECAP por ticker..."
+            value={searchTicker}
+            onChange={(e) => setSearchTicker(e.target.value)}
+            className="search-input"
+          />
+          <span className="search-count">
+            {filteredLecaps.length} lecap{filteredLecaps.length !== 1 ? 's' : ''}
+          </span>
         </div>
-        <div className="lecaps-form-row lecap-row-second">
-          <label className="lecaps-field">
-            Tasa
-            <input
-              type="number"
-              step="any"
-              value={form.tasa}
-              onChange={(e) => updateField('tasa', e.target.value)}
-              className="search-input"
-              required
-            />
-          </label>
-          <label className="lecaps-field">
-            Valor final (vf)
-            <input
-              type="number"
-              step="any"
-              value={form.vf}
-              onChange={(e) => updateField('vf', e.target.value)}
-              className="search-input"
-              required
-            />
-          </label>
-        </div>
-        <div className="lecaps-actions">
-          <button type="submit" className="btn btn-success" disabled={saving}>
-            {saving ? 'Guardando...' : 'Guardar LECAP'}
+        <div className="toolbar-right">
+          <button
+            className="btn btn-success"
+            onClick={() => setShowForm(!showForm)}
+          >
+            {showForm ? 'Cancelar' : '+ Nueva LECAP'}
           </button>
         </div>
-      </form>
-
-      <div className="search-bar">
-        <input
-          type="text"
-          placeholder="Buscar LECAP por ticker..."
-          value={searchTicker}
-          onChange={(e) => setSearchTicker(e.target.value)}
-          className="search-input"
-        />
-        <span className="search-count">
-          {filteredLecaps.length} lecaps
-        </span>
       </div>
+
+      {showForm && (
+        <form onSubmit={handleSubmit} className="lecaps-form">
+          <div className="lecaps-form-row">
+            <label className="lecaps-field">
+              Ticker
+              <input
+                type="text"
+                value={form.ticker}
+                onChange={(e) => updateField('ticker', e.target.value.toUpperCase())}
+                className="search-input"
+                autoFocus
+                required
+              />
+            </label>
+            <label className="lecaps-field">
+              Fecha liquidacion (date_liq)
+              <input
+                type="date"
+                value={form.date_liq}
+                onChange={(e) => updateField('date_liq', e.target.value)}
+                className="search-input"
+                required
+              />
+            </label>
+            <label className="lecaps-field">
+              Fecha vencimiento (date_vto)
+              <input
+                type="date"
+                value={form.date_vto}
+                onChange={(e) => updateField('date_vto', e.target.value)}
+                className="search-input"
+                required
+              />
+            </label>
+          </div>
+          <div className="lecaps-form-row lecap-row-second">
+            <label className="lecaps-field">
+              Tasa
+              <input
+                type="number"
+                step="any"
+                value={form.tasa}
+                onChange={(e) => updateField('tasa', e.target.value)}
+                className="search-input"
+                required
+              />
+            </label>
+            <label className="lecaps-field">
+              Valor final (vf)
+              <input
+                type="number"
+                step="any"
+                value={form.vf}
+                onChange={(e) => updateField('vf', e.target.value)}
+                className="search-input"
+                required
+              />
+            </label>
+          </div>
+          <div className="lecaps-actions">
+            <button type="submit" className="btn btn-success" disabled={saving}>
+              {saving ? 'Guardando...' : 'Guardar LECAP'}
+            </button>
+          </div>
+        </form>
+      )}
 
       <div className="table-scroll-wrapper">
         <table className="table bond-table">
@@ -168,31 +184,39 @@ export default function LecapsCreateForm({ onCreate }) {
               <th>Fecha vto.</th>
               <th>Tasa</th>
               <th>Valor final</th>
+              <th style={{ width: '60px' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={5} className="no-results">Cargando LECAPS...</td>
+                <td colSpan={6} className="no-results">Cargando LECAPS...</td>
               </tr>
             ) : filteredLecaps.length === 0 ? (
               <tr>
-                <td colSpan={5} className="no-results">No hay LECAPS para ese filtro</td>
+                <td colSpan={6} className="no-results">No hay LECAPS para ese filtro</td>
               </tr>
             ) : (
               filteredLecaps.map((row, idx) => (
                 <tr key={`${row.ticker}-${row.date_vto}-${idx}`}>
-                  <td>{row.ticker}</td>
-                  <td>{String(row.date_liq).split('T')[0]}</td>
-                  <td>{String(row.date_vto).split('T')[0]}</td>
+                  <td><strong>{row.ticker}</strong></td>
+                  <td>{fmtDate(row.date_liq)}</td>
+                  <td>{fmtDate(row.date_vto)}</td>
                   <td>{row.tasa}</td>
                   <td>{row.vf}</td>
+                  <td>
+                    <button className="btn btn-sm btn-calc" onClick={() => setCalcLecap(row)}>Calc</button>
+                  </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
       </div>
+
+      {calcLecap && (
+        <LecapCalcModal lecap={calcLecap} onClose={() => setCalcLecap(null)} />
+      )}
     </div>
   );
 }
