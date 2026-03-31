@@ -24,7 +24,7 @@ function calcFromPrice(lecap, settlementDate, precio) {
   const dias = daysBetween(date_liq, date_vto);
   const diasSettle = daysBetween(settlementDate, date_vto);
   const tasa_directa = vf / precio - 1;
-  const tea = Math.pow(1 + tasa_directa, 1 / diasSettle) - 1;
+  const tea = Math.pow(1 + tasa_directa, 365 / diasSettle) - 1;
   const modified_duration = diasSettle / (1 + tea);
   const tem = Math.pow(1 + tasa_directa, 30 / diasSettle) - 1;
 
@@ -49,7 +49,7 @@ function calcFromTEM(lecap, settlementDate, tem) {
   const diasSettle = daysBetween(settlementDate, date_vto);
   const precio = vf / Math.pow(1 + tem, diasSettle / 30);
   const tasa_directa = vf / precio - 1;
-  const tea = Math.pow(1 + tasa_directa, 1 / diasSettle) - 1;
+  const tea = Math.pow(1 + tasa_directa, 365 / diasSettle) - 1;
   const modified_duration = diasSettle / (1 + tea);
 
   return {
