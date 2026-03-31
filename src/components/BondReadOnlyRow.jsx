@@ -10,7 +10,7 @@ export default function BondReadOnlyRow({ bond, onEdit, onClone, onCalc, onToggl
       <td><strong>{bond.ticker}</strong></td>
       <td>{fmtDate(bond.issue_date)}</td>
       <td>{fmtDate(bond.maturity)}</td>
-      <td>{bond.coupon}</td>
+      <td>{(Number(bond.coupon) * 100).toFixed(2)}%</td>
       <td>{bond.index_code || '—'}</td>
       <td>{bond.offset_days}</td>
       <td>{bond.day_count_conv || '—'}</td>

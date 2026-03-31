@@ -251,7 +251,7 @@ export default function TamarCalcModal({ tamar, onClose }) {
                 <label>PRECIO</label>
                 <input
                   type="number"
-                  step="0.0001"
+                  step="0.01"
                   value={precio}
                   onChange={(e) => setPrecio(e.target.value)}
                   onKeyDown={handleKeyDown}
@@ -265,7 +265,7 @@ export default function TamarCalcModal({ tamar, onClose }) {
                 <label>TEM (%)</label>
                 <input
                   type="number"
-                  step="0.0001"
+                  step="0.01"
                   value={tem}
                   onChange={(e) => setTem(e.target.value)}
                   onKeyDown={handleKeyDown}

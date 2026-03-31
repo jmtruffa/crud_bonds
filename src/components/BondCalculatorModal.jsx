@@ -142,7 +142,7 @@ export default function BondCalculatorModal({ bond, onClose }) {
                 <label>PRICE</label>
                 <input
                   type="number"
-                  step="0.001"
+                  step="0.01"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   onKeyDown={handleKeyDown}
@@ -156,7 +156,7 @@ export default function BondCalculatorModal({ bond, onClose }) {
                 <label>RATE</label>
                 <input
                   type="number"
-                  step="0.0001"
+                  step="0.01"
                   value={rate}
                   onChange={(e) => setRate(e.target.value)}
                   onKeyDown={handleKeyDown}
@@ -170,7 +170,7 @@ export default function BondCalculatorModal({ bond, onClose }) {
               <label>INIT FEE</label>
               <input
                 type="number"
-                step="0.0001"
+                step="0.01"
                 value={initialFee}
                 onChange={(e) => setInitialFee(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -181,7 +181,7 @@ export default function BondCalculatorModal({ bond, onClose }) {
               <label>END FEE</label>
               <input
                 type="number"
-                step="0.0001"
+                step="0.01"
                 value={endingFee}
                 onChange={(e) => setEndingFee(e.target.value)}
                 onKeyDown={handleKeyDown}

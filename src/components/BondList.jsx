@@ -74,7 +74,7 @@ export default function BondList({ bonds, onSave, onRefresh }) {
       ticker: bond.ticker,
       issue_date: fmtDate(bond.issue_date),
       maturity: fmtDate(bond.maturity),
-      coupon: bond.coupon,
+      coupon: (Number(bond.coupon) * 100),
       index_code: bond.index_code || '',
       offset_days: bond.offset_days,
       day_count_conv_id: bond.day_count_conv_id,
@@ -85,7 +85,7 @@ export default function BondList({ bonds, onSave, onRefresh }) {
   function startNew() {
     setEditingId('new');
     setEditData({
-      ticker: '', issue_date: '', maturity: '', coupon: 0,
+      ticker: '', issue_date: '', maturity: '', coupon: '',
       index_code: '', offset_days: 0, day_count_conv_id: '', active: true,
     });
   }
@@ -96,7 +96,7 @@ export default function BondList({ bonds, onSave, onRefresh }) {
       ticker: `${bond.ticker}_COPY`,
       issue_date: fmtDate(bond.issue_date),
       maturity: fmtDate(bond.maturity),
-      coupon: bond.coupon,
+      coupon: (Number(bond.coupon) * 100),
       index_code: bond.index_code || '',
       offset_days: bond.offset_days,
       day_count_conv_id: bond.day_count_conv_id,
@@ -112,7 +112,7 @@ export default function BondList({ bonds, onSave, onRefresh }) {
   async function saveEdit() {
     const payload = {
       ...editData,
-      coupon: Number(editData.coupon),
+      coupon: Number(editData.coupon) / 100,
       offset_days: Number(editData.offset_days),
     };
     if (payload.issue_date && payload.maturity && payload.issue_date >= payload.maturity) {
@@ -180,7 +180,7 @@ export default function BondList({ bonds, onSave, onRefresh }) {
               <th>Ticker</th>
               <th>Issue Date</th>
               <th>Maturity</th>
-              <th>Coupon</th>
+              <th>Coupon (%)</th>
               <th>Index</th>
               <th>Offset</th>
               <th>Day Count</th>

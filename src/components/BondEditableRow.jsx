@@ -12,7 +12,7 @@ export default function BondEditableRow({ data, onChange, onSave, onCancel, inde
         <input className="cell-input" type="date" value={data.maturity} onChange={e => onChange('maturity', e.target.value)} required />
       </td>
       <td>
-        <input className="cell-input" type="number" min="0" max="1" step="0.00001" value={data.coupon} onChange={e => onChange('coupon', e.target.value)} />
+        <input className="cell-input" type="number" min="0" max="100" step="0.001" value={data.coupon} onChange={e => onChange('coupon', e.target.value)} />
       </td>
       <td>
         <select className="cell-select" value={data.index_code} onChange={e => onChange('index_code', e.target.value)}>
