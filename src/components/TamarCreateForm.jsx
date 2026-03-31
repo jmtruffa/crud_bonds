@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getTamars } from '../api';
+import TamarCalcModal from './TamarCalcModal';
 
 const initialForm = {
   ticker: '',
@@ -9,11 +10,13 @@ const initialForm = {
 };
 
 export default function TamarCreateForm({ onCreate }) {
+  const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
   const [tamars, setTamars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTicker, setSearchTicker] = useState('');
+  const [calcTamar, setCalcTamar] = useState(null);
 
   async function loadTamars() {
     setLoading(true);
@@ -67,6 +70,7 @@ export default function TamarCreateForm({ onCreate }) {
       await onCreate(payload);
       alert(`TAMAR ${payload.ticker} creada correctamente`);
       setForm(initialForm);
+      setShowForm(false);
       await loadTamars();
     } catch (err) {
       alert('No se pudo crear la TAMAR: ' + err.message);
@@ -75,76 +79,88 @@ export default function TamarCreateForm({ onCreate }) {
     }
   }
 
+  const fmtDate = (d) => (typeof d === 'string' ? d.split('T')[0] : d) || '';
+
   return (
     <div className="bond-list-container">
       <div className="table-toolbar">
-        <h2 style={{ margin: 0 }}>Alta de TAMAR</h2>
-      </div>
-      <form onSubmit={handleSubmit} className="lecaps-form">
-        <div className="lecaps-form-row">
-          <label className="lecaps-field">
-            Ticker
-            <input
-              type="text"
-              value={form.ticker}
-              onChange={(e) => updateField('ticker', e.target.value.toUpperCase())}
-              className="search-input"
-              required
-            />
-          </label>
-          <label className="lecaps-field">
-            Fecha liquidacion (date_liq)
-            <input
-              type="date"
-              value={form.date_liq}
-              onChange={(e) => updateField('date_liq', e.target.value)}
-              className="search-input"
-              required
-            />
-          </label>
-          <label className="lecaps-field">
-            Fecha vencimiento (date_vto)
-            <input
-              type="date"
-              value={form.date_vto}
-              onChange={(e) => updateField('date_vto', e.target.value)}
-              className="search-input"
-              required
-            />
-          </label>
+        <div className="search-bar">
+          <input
+            type="text"
+            placeholder="Buscar TAMAR por ticker..."
+            value={searchTicker}
+            onChange={(e) => setSearchTicker(e.target.value)}
+            className="search-input"
+          />
+          <span className="search-count">
+            {filteredTamars.length} tamar{filteredTamars.length !== 1 ? 's' : ''}
+          </span>
         </div>
-        <div className="lecaps-form-row lecap-row-second">
-          <label className="lecaps-field">
-            Tasa
-            <input
-              type="number"
-              step="any"
-              value={form.tasa}
-              onChange={(e) => updateField('tasa', e.target.value)}
-              className="search-input"
-              required
-            />
-          </label>
-        </div>
-        <div className="lecaps-actions">
-          <button type="submit" className="btn btn-success" disabled={saving}>
-            {saving ? 'Guardando...' : 'Guardar TAMAR'}
+        <div className="toolbar-right">
+          <button
+            className="btn btn-success"
+            onClick={() => setShowForm(!showForm)}
+          >
+            {showForm ? 'Cancelar' : '+ Nueva TAMAR'}
           </button>
         </div>
-      </form>
-
-      <div className="search-bar">
-        <input
-          type="text"
-          placeholder="Buscar TAMAR por ticker..."
-          value={searchTicker}
-          onChange={(e) => setSearchTicker(e.target.value)}
-          className="search-input"
-        />
-        <span className="search-count">
-          {filteredTamars.length} tamar
-        </span>
       </div>
+
+      {showForm && (
+        <form onSubmit={handleSubmit} className="lecaps-form">
+          <div className="lecaps-form-row">
+            <label className="lecaps-field">
+              Ticker
+              <input
+                type="text"
+                value={form.ticker}
+                onChange={(e) => updateField('ticker', e.target.value.toUpperCase())}
+                className="search-input"
+                autoFocus
+                required
+              />
+            </label>
+            <label className="lecaps-field">
+              Fecha liquidacion (date_liq)
+              <input
+                type="date"
+                value={form.date_liq}
+                onChange={(e) => updateField('date_liq', e.target.value)}
+                className="search-input"
+                required
+              />
+            </label>
+            <label className="lecaps-field">
+              Fecha vencimiento (date_vto)
+              <input
+                type="date"
+                value={form.date_vto}
+                onChange={(e) => updateField('date_vto', e.target.value)}
+                className="search-input"
+                required
+              />
+            </label>
+          </div>
+          <div className="lecaps-form-row lecap-row-second">
+            <label className="lecaps-field">
+              Tasa (spread)
+              <input
+                type="number"
+                step="any"
+                value={form.tasa}
+                onChange={(e) => updateField('tasa', e.target.value)}
+                className="search-input"
+                required
+              />
+            </label>
+          </div>
+          <div className="lecaps-actions">
+            <button type="submit" className="btn btn-success" disabled={saving}>
+              {saving ? 'Guardando...' : 'Guardar TAMAR'}
+            </button>
+          </div>
+        </form>
+      )}
 
       <div className="table-scroll-wrapper">
         <table className="table bond-table">
@@ -154,30 +170,38 @@ export default function TamarCreateForm({ onCreate }) {
               <th>Fecha liqui.</th>
               <th>Fecha vto.</th>
               <th>Tasa</th>
+              <th style={{ width: '60px' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={4} className="no-results">Cargando TAMAR...</td>
+                <td colSpan={5} className="no-results">Cargando TAMAR...</td>
               </tr>
             ) : filteredTamars.length === 0 ? (
               <tr>
-                <td colSpan={4} className="no-results">No hay TAMAR para ese filtro</td>
+                <td colSpan={5} className="no-results">No hay TAMAR para ese filtro</td>
               </tr>
             ) : (
               filteredTamars.map((row, idx) => (
                 <tr key={`${row.ticker}-${row.date_vto}-${idx}`}>
-                  <td>{row.ticker}</td>
-                  <td>{String(row.date_liq).split('T')[0]}</td>
-                  <td>{String(row.date_vto).split('T')[0]}</td>
+                  <td><strong>{row.ticker}</strong></td>
+                  <td>{fmtDate(row.date_liq)}</td>
+                  <td>{fmtDate(row.date_vto)}</td>
                   <td>{row.tasa}</td>
+                  <td>
+                    <button className="btn btn-sm btn-calc" onClick={() => setCalcTamar(row)}>Calc</button>
+                  </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
       </div>
+
+      {calcTamar && (
+        <TamarCalcModal tamar={calcTamar} onClose={() => setCalcTamar(null)} />
+      )}
     </div>
   );
 }

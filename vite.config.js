@@ -13,6 +13,7 @@ export default defineConfig({
       '/admin': 'http://localhost:4000',
       '/pdfs': 'http://localhost:4000',
       '/calc': 'http://localhost:4000',
+      '/bcra': 'http://localhost:4000',
     },
   },
 });

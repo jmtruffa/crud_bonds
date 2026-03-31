@@ -6,3 +6,4 @@ export { uploadBondPdfs, listBondPdfs, deleteBondPdf } from './pdfs.js';
 export { getIndexes, getDayCountConventions } from './references.js';
 export { extractFromPdfs, extractFromPdfsDebug } from './extract.js';
 export { calcYield, calcPrice } from './calculator.js';
+export { getTamarRates } from './bcra.js';

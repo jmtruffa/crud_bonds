@@ -18,6 +18,7 @@ const adminRoutes = require('./routes/admin');
 const publicPdfsRoutes = require('./routes/public-pdfs');
 const extractFromPdfsRoutes = require('./routes/extractFromPdfs');
 const calculatorRoutes = require('./routes/calculator');
+const bcraRoutes = require('./routes/bcra');
 
 const app = express();
 app.use(cors({ origin: true, credentials: true }));
@@ -46,6 +47,7 @@ app.use('/', authMiddleware, referencesRoutes);
 app.use('/admin', authMiddleware, adminRoutes);
 app.use('/extract-from-pdfs', authMiddleware, extractFromPdfsRoutes);
 app.use('/calc', authMiddleware, calculatorRoutes);
+app.use('/bcra', authMiddleware, bcraRoutes);
 
 // SPA fallback
 app.get('*', (req, res) => {

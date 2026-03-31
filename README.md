@@ -1,7 +1,7 @@
-# Bond Management CRUD System
+# Outlier Terminal
 
-Sistema CRUD para gestión de bonos financieros argentinos y sus cronogramas de cashflows.  
-Stack: React 19 + Vite | Node.js + Express | PostgreSQL | Google Cloud Storage | OpenAI (RAG + GPT-4o-mini).
+Sistema para gestión de bonos financieros argentinos, LECAPS y TAMAR, con calculadoras de rendimiento y cronogramas de cashflows.
+Stack: React 19 + Vite | Node.js + Express | PostgreSQL | Google Cloud Storage | OpenAI (RAG + GPT-4o-mini) | API BCRA.
 
 ---
 
@@ -27,6 +27,7 @@ Stack: React 19 + Vite | Node.js + Express | PostgreSQL | Google Cloud Storage |
 │   │   ├── extract.js          # extractCashflowsAI
 │   │   ├── references.js       # getIndexes, getDayCountConventions
 │   │   ├── calculator.js       # calcYield, calcPrice (servicio externo :8080)
+│   │   ├── bcra.js             # getTamarRates (proxy a API BCRA, variable 136)
 │   │   └── index.js            # Re-exports todas las funciones API
 │   ├── utils/
 │   │   ├── stringDistance.js    # Levenshtein y Damerau-Levenshtein para búsqueda fuzzy
@@ -40,7 +41,9 @@ Stack: React 19 + Vite | Node.js + Express | PostgreSQL | Google Cloud Storage |
 │       ├── BondReadOnlyRow.jsx # Fila de solo lectura de un bono
 │       ├── BondEditableRow.jsx # Fila de edición inline de un bono
 │       ├── CashflowUploader.jsx # Tabla cashflows, preload fechas, upload PDF, AI extract
-│       └── BondCalculatorModal.jsx # Calculadora yield/price (servicio externo :8080)
+│       ├── BondCalculatorModal.jsx # Calculadora yield/price (servicio externo :8080)
+│       ├── LecapCalcModal.jsx  # Calculadora LECAP (TEM ↔ Precio, cálculo local)
+│       └── TamarCalcModal.jsx  # Calculadora TAMAR (TEM ↔ Precio, tasas BCRA)
 │
 ├── server/                     # Backend (Node.js + Express)
 │   ├── index.js                # Entry point: monta middleware y rutas
@@ -60,6 +63,8 @@ Stack: React 19 + Vite | Node.js + Express | PostgreSQL | Google Cloud Storage |
 │   │   ├── pdfs.js             # Upload/list/serve PDFs (GCS)
 │   │   ├── extract.js          # POST /bonds/:id/extract-cashflows (AI)
 │   │   ├── references.js       # GET /indexes, /day-count-conventions
+│   │   ├── calculator.js       # Proxy a servicio de cálculo (:8080)
+│   │   ├── bcra.js             # Proxy a API BCRA (tasa TAMAR, cache diario)
 │   │   └── admin.js            # DELETE /admin/cleanup-null-cashflows
 │   ├── services/
 │   │   └── rag.js              # chunkText, cosineSimilarity, batchEmbed, getRelevantChunks
@@ -108,7 +113,31 @@ Click "Calc" en cualquier bono → BondCalculatorModal
   → extendIndex: opcional (tasa anual para extrapolar CER)
 ```
 
-### 5. Extracción AI de Cashflows desde PDFs
+### 5. Calculadora LECAP
+```
+Click "Calc" en cualquier LECAP → LecapCalcModal
+  → Modo PRECIO → TEM: ingresa precio, calcula TEM, TEA, tasa directa, mod duration
+  → Modo TEM → PRECIO: ingresa TEM (%), calcula precio y métricas
+  → Cálculo local (no requiere servicio externo)
+  → Settlement date: auto T+1 hábil
+  → Fórmulas: tasa_directa = vf/precio - 1
+              tea = (1 + directa)^(365/diasSettle) - 1
+              tem = (1 + directa)^(30/diasSettle) - 1
+              modified_duration = diasSettle / (1 + tea)
+```
+
+### 6. Calculadora TAMAR
+```
+Click "Calc" en cualquier TAMAR → TamarCalcModal
+  → Descarga tasas TAMAR del BCRA (variable 136, cache 24hs)
+  → Calcula TAMAR prom TNA (ventana: date_liq-10biz → hoy-9biz)
+  → tamar_tem = ((1 + (prom + spread) * 32/365)^(365/32))^(1/12) - 1
+  → vpv = 100 * (1 + tamar_tem)^((days360(liq,vto)/360) * 12)
+  → Desde settlement: directa, TNA, TEA, TEM (act y 360), mod duration
+  → Modo TEM → PRECIO: ingresa TEM (%), calcula precio
+```
+
+### 7. Extracción AI de Cashflows desde PDFs
 ```
 Upload PDFs → POST /bonds/:ticker/pdfs → GCS bucket
 
@@ -262,6 +291,9 @@ Todos los endpoints (excepto `/auth/login`) requieren header `Authorization: Bea
 | POST | `/bonds/:id/extract-cashflows` | Extraer cashflows con AI |
 | GET | `/indexes` | Códigos de índices |
 | GET | `/day-count-conventions` | Convenciones |
+| GET | `/calc/yield` | Proxy → :8080/yield (calc YTM) |
+| GET | `/calc/price` | Proxy → :8080/price (calc precio) |
+| GET | `/bcra/tamar` | Tasa TAMAR (BCRA var 136, cache 24h) |
 | DELETE | `/admin/cleanup-null-cashflows` | Limpiar cashflows nulos |
 
 ---
@@ -275,4 +307,5 @@ Todos los endpoints (excepto `/auth/login`) requieren header `Authorization: Bea
 - **Storage:** Google Cloud Storage (@google-cloud/storage)
 - **AI:** OpenAI API (gpt-4o-mini + text-embedding-3-small)
 - **PDF:** pdf-parse + multer (memory storage)
-- **Features:** Búsqueda fuzzy Damerau-Levenshtein, edición inline, RAG para PDFs, validaciones financieras
+- **APIs externas:** API BCRA (tasa TAMAR), servicio de cálculo en :8080 (yield/price bonos)
+- **Features:** Búsqueda fuzzy Damerau-Levenshtein, edición inline, RAG para PDFs, calculadoras de rendimiento, validaciones financieras
