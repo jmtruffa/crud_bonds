@@ -143,7 +143,7 @@ export default function TamarCreateForm({ onCreate }) {
           </div>
           <div className="lecaps-form-row lecap-row-second">
             <label className="lecaps-field">
-              Tasa (spread)
+              Spread (%)
               <input
                 type="number"
                 step="any"

@@ -40,7 +40,7 @@ function addBizDays(dateStr, n) {
 function calcTamarMetrics(tamar, settlementDate, price, tamarRates) {
   const date_liq = tamar.date_liq.split('T')[0];
   const date_vto = tamar.date_vto.split('T')[0];
-  const tasa = Number(tamar.tasa);
+  const tasa = Number(tamar.tasa) / 100;
 
   // Average TAMAR TNA in window: [date_liq - 10 biz days, today - 9 biz days]
   const today = new Date().toISOString().split('T')[0];
@@ -92,7 +92,7 @@ function calcTamarMetrics(tamar, settlementDate, price, tamarRates) {
 function calcTamarFromTEM(tamar, settlementDate, temInput, tamarRates) {
   const date_liq = tamar.date_liq.split('T')[0];
   const date_vto = tamar.date_vto.split('T')[0];
-  const tasa = Number(tamar.tasa);
+  const tasa = Number(tamar.tasa) / 100;
 
   const today = new Date().toISOString().split('T')[0];
   const dateStart = addBizDays(date_liq, -10);
@@ -214,7 +214,7 @@ export default function TamarCalcModal({ tamar, onClose }) {
               <input type="text" value={fmtDate(tamar.date_vto)} readOnly className="cell-input" />
             </div>
             <div className="calc-field">
-              <label>SPREAD</label>
+              <label>SPREAD (%)</label>
               <input type="text" value={tamar.tasa} readOnly className="cell-input" />
             </div>
           </div>
