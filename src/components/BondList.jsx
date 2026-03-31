@@ -3,6 +3,7 @@ import CashflowUploader from './CashflowUploader';
 import BondReadOnlyRow from './BondReadOnlyRow';
 import BondEditableRow from './BondEditableRow';
 import CreateBondModal from './CreateBondModal';
+import BondCalculatorModal from './BondCalculatorModal';
 import { damerauLevenshteinOSA } from '../utils/stringDistance';
 import { getIndexes, getDayCountConventions } from '../api';
 
@@ -20,6 +21,7 @@ export default function BondList({ bonds, onSave, onRefresh }) {
   const [indexOptions, setIndexOptions] = useState([]);
   const [conventionOptions, setConventionOptions] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [calcBond, setCalcBond] = useState(null);
 
   useEffect(() => {
     Promise.all([getIndexes(), getDayCountConventions()])
@@ -183,7 +185,7 @@ export default function BondList({ bonds, onSave, onRefresh }) {
               <th>Offset</th>
               <th>Day Count</th>
               <th>Active</th>
-              <th style={{ width: '130px' }}>Actions</th>
+              <th style={{ width: '180px' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -214,6 +216,7 @@ export default function BondList({ bonds, onSave, onRefresh }) {
                       bond={b}
                       onEdit={() => startEdit(b)}
                       onClone={() => startClone(b)}
+                      onCalc={() => setCalcBond(b)}
                       onToggleCashflows={() => setExpandedCfId(expandedCfId === b.id ? null : b.id)}
                       isExpanded={expandedCfId === b.id}
                     />
@@ -266,6 +269,9 @@ export default function BondList({ bonds, onSave, onRefresh }) {
           onSuccess={() => { setShowCreateModal(false); onRefresh(); }}
           onClose={() => setShowCreateModal(false)}
         />
+      )}
+      {calcBond && (
+        <BondCalculatorModal bond={calcBond} onClose={() => setCalcBond(null)} />
       )}
     </div>
   );

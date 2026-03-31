@@ -26,6 +26,7 @@ Stack: React 19 + Vite | Node.js + Express | PostgreSQL | Google Cloud Storage |
 │   │   ├── pdfs.js             # uploadBondPdfs, listBondPdfs
 │   │   ├── extract.js          # extractCashflowsAI
 │   │   ├── references.js       # getIndexes, getDayCountConventions
+│   │   ├── calculator.js       # calcYield, calcPrice (servicio externo :8080)
 │   │   └── index.js            # Re-exports todas las funciones API
 │   ├── utils/
 │   │   ├── stringDistance.js    # Levenshtein y Damerau-Levenshtein para búsqueda fuzzy
@@ -38,7 +39,8 @@ Stack: React 19 + Vite | Node.js + Express | PostgreSQL | Google Cloud Storage |
 │       ├── BondList.jsx        # Tabla de bonos (search, sort, pagination, edit)
 │       ├── BondReadOnlyRow.jsx # Fila de solo lectura de un bono
 │       ├── BondEditableRow.jsx # Fila de edición inline de un bono
-│       └── CashflowUploader.jsx # Tabla cashflows, preload fechas, upload PDF, AI extract
+│       ├── CashflowUploader.jsx # Tabla cashflows, preload fechas, upload PDF, AI extract
+│       └── BondCalculatorModal.jsx # Calculadora yield/price (servicio externo :8080)
 │
 ├── server/                     # Backend (Node.js + Express)
 │   ├── index.js                # Entry point: monta middleware y rutas
@@ -93,7 +95,20 @@ Click en bono → CashflowUploader → GET /bonds/:id/cashflows
   → Save All → POST /bonds/:id/cashflows/bulk-json
 ```
 
-### 4. Extracción AI de Cashflows desde PDFs
+### 4. Calculadora de Bonos
+```
+Click "Calc" en cualquier bono → BondCalculatorModal
+  → Modo YIELD: ingresa precio → GET localhost:8080/yield
+     → Devuelve: YTM, Modified Duration, Accrual Days, Parity, Residual,
+        Accrued Interest, Technical Value, CER usado, etc.
+  → Modo PRICE: ingresa tasa → GET localhost:8080/price
+     → Devuelve: Price, Modified Duration, métricas extendidas
+  → Settlement date: auto T+1 hábil (salta fines de semana)
+  → Fees: precargados en 0
+  → extendIndex: opcional (tasa anual para extrapolar CER)
+```
+
+### 5. Extracción AI de Cashflows desde PDFs
 ```
 Upload PDFs → POST /bonds/:ticker/pdfs → GCS bucket
 

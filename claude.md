@@ -24,6 +24,7 @@ CRUD application for managing Argentine financial bonds and their cashflow sched
   - `pdfs.js` - PDF upload/list (GCS)
   - `extract.js` - AI cashflow extraction
   - `references.js` - Index types, day count conventions
+  - `calculator.js` - Bond calculator (yield/price) via external service
   - `index.js` - Re-exports all API functions
 - **Components**: `src/components/`
   - `PrivateRoute.jsx` - Auth guard
@@ -32,6 +33,7 @@ CRUD application for managing Argentine financial bonds and their cashflow sched
   - `BondReadOnlyRow.jsx` - Display row for a bond
   - `BondEditableRow.jsx` - Inline editing row for a bond
   - `CashflowUploader.jsx` - Cashflow table, preload, PDF upload, AI extract
+  - `BondCalculatorModal.jsx` - Yield/Price calculator modal (Bloomberg style)
 - **Utilities**: `src/utils/`
   - `stringDistance.js` - Levenshtein and Damerau-Levenshtein distance functions
   - `dateHelpers.js` - Date arithmetic for cashflow date generation
@@ -55,6 +57,13 @@ CRUD application for managing Argentine financial bonds and their cashflow sched
 1. CashflowUploader shows cashflow table for selected bond
 2. Can preload date templates (monthly, quarterly, semiannual, annual)
 3. Validates: rate 0-1, dates ordered, residual never negative, amort sums to 100
+
+### Bond Calculator
+1. Click "Calc" button on any bond row → opens calculator modal
+2. Two modes: **Yield** (given price → compute YTM) and **Price** (given rate → compute price)
+3. Calls external service at `localhost:8080` (`GET /yield`, `GET /price`)
+4. Settlement date auto-set to T+1 business day, fees default to 0
+5. Returns: YTM/Price, Modified Duration, Accrual Days, Parity, Residual, Accrued Interest, Technical Value, CER info, etc.
 
 ### AI Cashflow Extraction
 1. Upload bond prospectus PDFs → stored in GCS under `TICKER/` prefix

@@ -1,4 +1,4 @@
-export default function BondReadOnlyRow({ bond, onEdit, onClone, onToggleCashflows, isExpanded }) {
+export default function BondReadOnlyRow({ bond, onEdit, onClone, onCalc, onToggleCashflows, isExpanded }) {
   const fmtDate = (d) => (typeof d === 'string' ? d.split('T')[0] : d) || '';
   return (
     <tr>
@@ -23,6 +23,7 @@ export default function BondReadOnlyRow({ bond, onEdit, onClone, onToggleCashflo
         <div className="table-action-group">
           <button className="btn btn-sm btn-secondary" onClick={onEdit}>Edit</button>
           <button className="btn btn-sm btn-success" onClick={onClone}>Clone</button>
+          <button className="btn btn-sm btn-calc" onClick={onCalc}>Calc</button>
         </div>
       </td>
     </tr>
