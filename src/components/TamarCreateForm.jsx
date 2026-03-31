@@ -49,7 +49,7 @@ export default function TamarCreateForm({ onCreate }) {
       ticker: form.ticker.trim().toUpperCase(),
       date_liq: form.date_liq,
       date_vto: form.date_vto,
-      tasa: Number(form.tasa),
+      tasa: Number(form.tasa) / 100,
     };
 
     if (!payload.ticker || !payload.date_liq || !payload.date_vto) {
@@ -169,7 +169,7 @@ export default function TamarCreateForm({ onCreate }) {
               <th>Ticker</th>
               <th>Fecha liqui.</th>
               <th>Fecha vto.</th>
-              <th>Tasa</th>
+              <th>Spread (%)</th>
               <th style={{ width: '60px' }}>Actions</th>
             </tr>
           </thead>
@@ -188,7 +188,7 @@ export default function TamarCreateForm({ onCreate }) {
                   <td><strong>{row.ticker}</strong></td>
                   <td>{fmtDate(row.date_liq)}</td>
                   <td>{fmtDate(row.date_vto)}</td>
-                  <td>{row.tasa}</td>
+                  <td>{(Number(row.tasa) * 100).toFixed(2)}%</td>
                   <td>
                     <button className="btn btn-sm btn-calc" onClick={() => setCalcTamar(row)}>Calc</button>
                   </td>
