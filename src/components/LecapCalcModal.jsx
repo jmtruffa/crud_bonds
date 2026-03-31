@@ -47,7 +47,8 @@ function calcFromTEM(lecap, settlementDate, tem) {
 
   const dias = daysBetween(date_liq, date_vto);
   const diasSettle = daysBetween(settlementDate, date_vto);
-  const precio = vf / Math.pow(1 + tem, diasSettle / 30);
+  const temDecimal = tem / 100;
+  const precio = vf / Math.pow(1 + temDecimal, diasSettle / 30);
   const tasa_directa = vf / precio - 1;
   const tea = Math.pow(1 + tasa_directa, 365 / diasSettle) - 1;
   const modified_duration = diasSettle / (1 + tea);
@@ -185,7 +186,7 @@ export default function LecapCalcModal({ lecap, onClose }) {
                   onKeyDown={handleKeyDown}
                   className="cell-input"
                   autoFocus
-                  placeholder="e.g. 0.035"
+                  placeholder="e.g. 3.5 para 3.5%"
                 />
               </div>
             )}

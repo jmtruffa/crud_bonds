@@ -49,7 +49,7 @@ export default function BondsPage() {
   return (
     <div className="app-container">
       <header>
-        <h1>CRUD Bonds</h1>
+        <h1>OUTLIER TERMINAL</h1>
         <button className="btn btn-secondary" onClick={handleLogout}>Logout</button>
       </header>
       <main>
