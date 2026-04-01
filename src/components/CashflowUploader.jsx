@@ -131,7 +131,7 @@ export default function CashflowUploader({ bond }) {
         [cfId]: {
           seq: cf.seq.toString(),
           date: cf.date,
-          rate: cf.rate.toString(),
+          rate: (parseFloat(cf.rate) * 100).toString(),
           amort: cf.amort.toString(),
           residual: cf.residual.toString(),
           amount: cf.amount.toString()
@@ -175,7 +175,7 @@ export default function CashflowUploader({ bond }) {
     const data = {
       seq: parseInt(editData.seq),
       date: editData.date,
-      rate: parseFloat(editData.rate),
+      rate: parseFloat(editData.rate) / 100,
       amort: parseFloat(editData.amort),
       residual: parseFloat(editData.residual),
       amount: parseFloat(editData.amount)
@@ -237,8 +237,8 @@ export default function CashflowUploader({ bond }) {
       if (row.amort === '' || row.amort === undefined) errors.push(`Fila ${rowNum}: falta amort`);
       if (row.amount === '' || row.amount === undefined) errors.push(`Fila ${rowNum}: falta amount`);
       const rate = parseFloat(row.rate);
-      if (!isNaN(rate) && (rate < 0 || rate > 1)) {
-        errors.push(`Fila ${rowNum}: rate debe estar entre 0 y 1`);
+      if (!isNaN(rate) && (rate < 0 || rate > 100)) {
+        errors.push(`Fila ${rowNum}: rate debe estar entre 0 y 100`);
       }
       const amort = parseFloat(row.amort) || 0;
       currentResidual = +(currentResidual - amort).toFixed(2);
@@ -261,7 +261,7 @@ export default function CashflowUploader({ bond }) {
     }
     const payload = newCashflows.map(row => ({
       date: row.date,
-      rate: parseFloat(row.rate),
+      rate: parseFloat(row.rate) / 100,
       amort: parseFloat(row.amort),
       amount: parseFloat(row.amount)
     }));
@@ -376,7 +376,7 @@ export default function CashflowUploader({ bond }) {
                 <tr>
                   <th>Seq</th>
                   <th>Date</th>
-                  <th>Rate</th>
+                  <th>Rate (%)</th>
                   <th>Amort</th>
                   <th>Residual</th>
                   <th>Amount</th>
@@ -401,8 +401,8 @@ export default function CashflowUploader({ bond }) {
                           className="edit-input" readOnly={!isEditing} required autoFocus />
                       </td>
                       <td>
-                        <input type="number" step="0.00001"
-                          value={isEditing ? rowData.rate : parseFloat(c.rate).toFixed(4)}
+                        <input type="number" step="0.01"
+                          value={isEditing ? rowData.rate : (parseFloat(c.rate) * 100).toFixed(2)}
                           onChange={(e) => handleEditChange(c.id, 'rate', e.target.value)}
                           className="edit-input" readOnly={!isEditing} />
                       </td>
@@ -448,7 +448,7 @@ export default function CashflowUploader({ bond }) {
                         className="edit-input" />
                     </td>
                     <td>
-                      <input type="number" step="0.00001" value={newRow.rate}
+                      <input type="number" step="0.01" value={newRow.rate}
                         onChange={(e) => handleNewCashflowChange(newRow.tempId, 'rate', e.target.value)}
                         className="edit-input" />
                     </td>

@@ -35,7 +35,7 @@ export default function CreateBondModal({ indexOptions, conventionOptions, onSuc
         issue_date: result.principal?.issue_date || '',
         maturity: result.principal?.maturity_date || '',
       }));
-      const withSeq = result.cashflows.map((cf, i) => ({ ...cf, seq: i + 1 }));
+      const withSeq = result.cashflows.map((cf, i) => ({ ...cf, seq: i + 1, rate: (parseFloat(cf.rate) * 100).toString() }));
       setEditedCashflows(recalcResiduals(withSeq));
       setStep('review');
     } catch (e) {
@@ -100,12 +100,12 @@ export default function CreateBondModal({ indexOptions, conventionOptions, onSuc
     try {
       const bond = {
         ...bondForm,
-        coupon: Number(bondForm.coupon),
+        coupon: Number(bondForm.coupon) / 100,
         offset_days: Number(bondForm.offset_days),
       };
       const cashflows = editedCashflows.map(({ date, rate, amort, amount }) => ({
         date,
-        rate: parseFloat(rate) || 0,
+        rate: (parseFloat(rate) || 0) / 100,
         amort: parseFloat(amort) || 0,
         amount: parseFloat(amount) || 0,
       }));
@@ -303,7 +303,7 @@ export default function CreateBondModal({ indexOptions, conventionOptions, onSuc
                           className="edit-input edit-input-sm"
                           value={cf.rate}
                           onChange={e => handleCfChange(i, 'rate', e.target.value)}
-                          step="0.0001"
+                          step="0.01"
                         />
                       </td>
                       <td>
