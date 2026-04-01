@@ -32,15 +32,22 @@ export default function BondList({ bonds, onSave, onRefresh }) {
       .catch(console.error);
   }, []);
 
-  // Filter with fuzzy search
-  let filteredBonds = bonds.filter(b => {
-    if (!searchTicker.trim()) return true;
-    const search = searchTicker.toLowerCase().trim();
-    const ticker = b.ticker.toLowerCase();
-    if (ticker.includes(search)) return true;
-    const maxDistance = search.length <= 3 ? 1 : 2;
-    return damerauLevenshteinOSA(search, ticker) <= maxDistance;
-  });
+  // Filter: exact substring first, fallback to fuzzy only if no exact matches
+  let filteredBonds;
+  const searchTerm = searchTicker.toLowerCase().trim();
+  if (!searchTerm) {
+    filteredBonds = bonds;
+  } else {
+    const exactMatches = bonds.filter(b => b.ticker.toLowerCase().includes(searchTerm));
+    if (exactMatches.length > 0) {
+      filteredBonds = exactMatches;
+    } else {
+      const maxDistance = searchTerm.length <= 3 ? 1 : 2;
+      filteredBonds = bonds.filter(b =>
+        damerauLevenshteinOSA(searchTerm, b.ticker.toLowerCase()) <= maxDistance
+      );
+    }
+  }
 
   // Sort
   filteredBonds.sort((a, b) => {
