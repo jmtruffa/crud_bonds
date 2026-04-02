@@ -17,6 +17,8 @@ export default function TamarCreateForm({ onCreate }) {
   const [loading, setLoading] = useState(true);
   const [searchTicker, setSearchTicker] = useState('');
   const [calcTamar, setCalcTamar] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
 
   async function loadTamars() {
     setLoading(true);
@@ -42,6 +44,12 @@ export default function TamarCreateForm({ onCreate }) {
     if (!searchTicker.trim()) return true;
     return (row.ticker || '').toLowerCase().includes(searchTicker.trim().toLowerCase());
   });
+
+  const totalPages = Math.ceil(filteredTamars.length / ITEMS_PER_PAGE);
+  const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedTamars = filteredTamars.slice(startIdx, startIdx + ITEMS_PER_PAGE);
+
+  useEffect(() => { setCurrentPage(1); }, [searchTicker]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -183,7 +191,7 @@ export default function TamarCreateForm({ onCreate }) {
                 <td colSpan={5} className="no-results">No hay TAMAR para ese filtro</td>
               </tr>
             ) : (
-              filteredTamars.map((row, idx) => (
+              paginatedTamars.map((row, idx) => (
                 <tr key={`${row.ticker}-${row.date_vto}-${idx}`}>
                   <td><strong>{row.ticker}</strong></td>
                   <td>{fmtDate(row.date_liq)}</td>
@@ -198,6 +206,14 @@ export default function TamarCreateForm({ onCreate }) {
           </tbody>
         </table>
       </div>
+
+      {totalPages > 1 && (
+        <div className="pagination">
+          <button className="btn btn-secondary" disabled={currentPage <= 1} onClick={() => setCurrentPage(p => p - 1)}>Prev</button>
+          <span className="page-info">Página <span className="page-number">{currentPage}</span> de {totalPages}</span>
+          <button className="btn btn-secondary" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)}>Next</button>
+        </div>
+      )}
 
       {calcTamar && (
         <TamarCalcModal tamar={calcTamar} onClose={() => setCalcTamar(null)} />

@@ -18,6 +18,8 @@ export default function LecapsCreateForm({ onCreate }) {
   const [loading, setLoading] = useState(true);
   const [searchTicker, setSearchTicker] = useState('');
   const [calcLecap, setCalcLecap] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
 
   async function loadLecaps() {
     setLoading(true);
@@ -43,6 +45,12 @@ export default function LecapsCreateForm({ onCreate }) {
     if (!searchTicker.trim()) return true;
     return (row.ticker || '').toLowerCase().includes(searchTicker.trim().toLowerCase());
   });
+
+  const totalPages = Math.ceil(filteredLecaps.length / ITEMS_PER_PAGE);
+  const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedLecaps = filteredLecaps.slice(startIdx, startIdx + ITEMS_PER_PAGE);
+
+  useEffect(() => { setCurrentPage(1); }, [searchTicker]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -197,7 +205,7 @@ export default function LecapsCreateForm({ onCreate }) {
                 <td colSpan={6} className="no-results">No hay LECAPS para ese filtro</td>
               </tr>
             ) : (
-              filteredLecaps.map((row, idx) => (
+              paginatedLecaps.map((row, idx) => (
                 <tr key={`${row.ticker}-${row.date_vto}-${idx}`}>
                   <td><strong>{row.ticker}</strong></td>
                   <td>{fmtDate(row.date_liq)}</td>
@@ -213,6 +221,14 @@ export default function LecapsCreateForm({ onCreate }) {
           </tbody>
         </table>
       </div>
+
+      {totalPages > 1 && (
+        <div className="pagination">
+          <button className="btn btn-secondary" disabled={currentPage <= 1} onClick={() => setCurrentPage(p => p - 1)}>Prev</button>
+          <span className="page-info">Página <span className="page-number">{currentPage}</span> de {totalPages}</span>
+          <button className="btn btn-secondary" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)}>Next</button>
+        </div>
+      )}
 
       {calcLecap && (
         <LecapCalcModal lecap={calcLecap} onClose={() => setCalcLecap(null)} />

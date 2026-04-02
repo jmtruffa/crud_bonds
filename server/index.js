@@ -19,6 +19,8 @@ const publicPdfsRoutes = require('./routes/public-pdfs');
 const extractFromPdfsRoutes = require('./routes/extractFromPdfs');
 const calculatorRoutes = require('./routes/calculator');
 const bcraRoutes = require('./routes/bcra');
+const marketdataRoutes = require('./routes/marketdata');
+const { start: startMarketData } = require('./services/marketdata');
 
 const app = express();
 app.use(cors({ origin: true, credentials: true }));
@@ -38,6 +40,7 @@ app.use(express.static(path.join(__dirname, '..', 'dist')));
 // Public routes
 app.use('/auth', authRoutes);
 app.use('/pdfs', publicPdfsRoutes);
+app.use('/marketdata', marketdataRoutes);
 
 // Protected routes
 app.use('/bonds', authMiddleware, bondsRoutes);
@@ -57,4 +60,5 @@ app.get('*', (req, res) => {
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server listening on ${PORT}`);
+  startMarketData();
 });

@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(cat >> \"C:\\\\Users\\\\Joaco\\\\Desktop\\\\crud_bonds_jmt\\\\src\\\\style.css\" << 'EOF'\n\n/* Modal debug output */\n.modal-debug {\n  border: 1px solid #b0c4de;\n  border-radius: 4px;\n  background: #f0f4f8;\n  padding: 12px;\n  display: flex;\n  flex-direction: column;\n  gap: 10px;\n  font-size: 12px;\n}\n\n.modal-debug-header {\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n  color: #333;\n}\n\n.modal-debug-section {\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n}\n\n.modal-debug-section textarea {\n  width: 100%;\n  font-family: monospace;\n  font-size: 11px;\n  resize: vertical;\n  border: 1px solid #ccc;\n  border-radius: 3px;\n  padding: 6px;\n  background: #fff;\n  box-sizing: border-box;\n}\nEOF)",
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "WebFetch(domain:mtr.primary.ventures)",
+      "Bash(npm install:*)",
+      "Bash(NODE_EXTRA_CA_CERTS=\"\" npm install ws --strict-ssl=false)",
+      "Bash(grep -r \"chart\\\\|Chart\\\\|graph\\\\|Graph\" /Users/juan/dev/crud_bonds/src --include=*.js --include=*.jsx)"
     ]
   }
 }

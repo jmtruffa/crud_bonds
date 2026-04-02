@@ -49,6 +49,68 @@ h1 {
   letter-spacing: 0.8px;
 }
 
+/* ===== Market Banner ===== */
+.market-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 12px;
+  background: #0d0d0d;
+  border: 1px solid var(--bbg-border);
+  border-radius: 2px;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+.market-banner-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--bbg-muted);
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--bbg-danger);
+}
+
+.status-dot.live {
+  background: var(--bbg-positive);
+  box-shadow: 0 0 4px var(--bbg-positive);
+}
+
+.market-banner-items {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.market-banner-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.market-banner-label {
+  color: var(--bbg-accent);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+
+.market-banner-value {
+  color: var(--bbg-positive);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Buttons */
 .btn {
   background-color: #1e1e1e;
@@ -1048,4 +1110,171 @@ h1 {
   .calc-inputs {
     grid-template-columns: 1fr 1fr;
   }
+}
+
+/* ===== Futuros Tab ===== */
+.futuros-layout {
+  display: flex;
+  gap: 12px;
+  min-height: 500px;
+}
+
+.futuros-table-panel {
+  flex: 0 0 46%;
+  min-width: 160px;
+  overflow-x: auto;
+  border: 1px solid var(--bbg-border);
+  border-radius: 2px;
+  background: #0d0d0d;
+  display: flex;
+  flex-direction: column;
+}
+
+.futuros-table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  background: #171717;
+  border-bottom: 1px solid var(--bbg-border);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--bbg-accent);
+  letter-spacing: 0.5px;
+}
+
+.futuros-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.futuros-table th {
+  padding: 5px 6px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--bbg-muted);
+  border-bottom: 1px solid var(--bbg-border);
+  background: #111;
+  white-space: nowrap;
+}
+
+.futuros-table th.num,
+.futuros-table td.num {
+  text-align: right;
+}
+
+.futuros-table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid #1a1a1a;
+  white-space: nowrap;
+}
+
+.futuros-positive {
+  color: var(--bbg-positive);
+}
+
+.futuros-negative {
+  color: var(--bbg-danger);
+}
+
+.futuros-muted {
+  color: var(--bbg-muted);
+  opacity: 0.7;
+}
+
+.futuros-table tbody tr:hover {
+  background: #161616;
+}
+
+.futuros-label {
+  color: var(--bbg-text);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.futuros-price {
+  color: var(--bbg-positive);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.futuros-empty {
+  text-align: center;
+  color: var(--bbg-muted);
+  padding: 20px 10px;
+  font-size: 12px;
+}
+
+.futuros-chart-panel {
+  flex: 1 1 54%;
+  border: 1px solid var(--bbg-border);
+  border-radius: 2px;
+  background: #0d0d0d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.futuros-chart-placeholder {
+  color: var(--bbg-muted);
+  font-size: 14px;
+  letter-spacing: 2px;
+  opacity: 0.4;
+}
+
+@media (max-width: 768px) {
+  .futuros-layout {
+    flex-direction: column;
+  }
+
+  .futuros-table-panel {
+    flex: none;
+    width: 100%;
+  }
+}
+
+/* ===== Settings ===== */
+.btn-gear {
+  font-size: 16px !important;
+  padding: 4px 8px !important;
+  line-height: 1;
+}
+
+.settings-modal {
+  max-width: 420px;
+}
+
+.settings-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--bbg-accent);
+}
+
+.settings-control {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-control select {
+  width: 140px;
+  padding: 6px 8px;
+  font-size: 13px;
+  background: #0f0f0f;
+  color: var(--bbg-text);
+  border: 1px solid var(--bbg-border);
+  border-radius: 2px;
+}
+
+.settings-hint {
+  font-size: 11px;
+  color: var(--bbg-muted);
 }

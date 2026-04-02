@@ -171,7 +171,7 @@ export default function BondList({ bonds, onSave, onRefresh }) {
             </button>
           </div>
           <button className="btn btn-success" onClick={startNew} disabled={editingId !== null}>
-            + New Bond
+            + Nuevo
           </button>
           <button className="btn btn-primary" onClick={() => setShowCreateModal(true)} disabled={editingId !== null}>
             + Create from PDF
